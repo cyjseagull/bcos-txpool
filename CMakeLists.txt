@@ -39,8 +39,8 @@ list(APPEND CMAKE_MODULE_PATH ${BCOS_TXPOOL_CMAKE_DIR})
 #init hunter
 include(HunterGate)
 HunterGate(
-    URL "https://github.com/FISCO-BCOS/hunter/archive/4ba91e1dc10bd74cb757be4ea40d2b3657d808ac.tar.gz"
-    SHA1 "9d92a895063ce5f174593686c5f0b0f52377e39d"
+    URL "https://github.com/FISCO-BCOS/hunter/archive/8c81ea454c0c268b257da1fe3e3f2f69bd59a67d.tar.gz"
+    SHA1 "13292adf48c4c053ff2ceb7173631a296c08d1ac"
     FILEPATH "${BCOS_TXPOOL_CMAKE_DIR}/config.cmake"
 )
 project(bcos-txpool VERSION "3.0.0")
@@ -56,11 +56,25 @@ file(COPY ${BCOS_CMAKE_SCRIPTS_DIR}/.clang-format DESTINATION ${CMAKE_CURRENT_SO
 
 include_directories(${CMAKE_INSTALL_INCLUDEDIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # install dependencies
 include(InstallBcosFrameworkDependencies)
 
+set(BCOS_TXPOOL_TARGET "bcos-txpool")
+add_subdirectory(src)
+include(InstallConfig)
+# install consensus target
+install(
+    TARGETS ${BCOS_TXPOOL_TARGET}
+    EXPORT "${TARGETS_EXPORT_NAME}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+include(InstallInclude)
 if (TESTS)
     # fetch bcos-test
     set(BCOS_TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/test/bcos-test)
