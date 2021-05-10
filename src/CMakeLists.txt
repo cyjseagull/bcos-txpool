@@ -1,7 +1,13 @@
 file(GLOB SRC_LIST "*.cpp")
 file(GLOB HEADERS "*.h")
+aux_source_directory(. SRC_LIST)
+include_directories(.)
+
 aux_source_directory(./storage SRC_LIST)
 include_directories(./storage)
+
+aux_source_directory(./validator SRC_LIST)
+include_directories(./validator)
 
 add_library(${BCOS_TXPOOL_TARGET} ${SRC_LIST} ${PROTO_SRCS} ${HEADERS} ${PROTO_HDRS})
 

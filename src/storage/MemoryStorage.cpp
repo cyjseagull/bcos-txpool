@@ -20,21 +20,20 @@
  */
 #include "MemoryStorage.h"
 #include <bcos-framework/interfaces/protocol/CommonError.h>
+#include <tbb/parallel_invoke.h>
 
 using namespace bcos;
 using namespace bcos::txpool;
 using namespace bcos::protocol;
 
-MemoryStorage::MemoryStorage(
-    TxValidatorInterface::Ptr _txValidator, size_t _poolLimit, size_t _notifierWorkerNum)
-  : m_txValidator(_txValidator), m_poolLimit(_poolLimit)
+MemoryStorage::MemoryStorage(TxPoolConfig::Ptr _config) : m_config(_config)
 {
-    m_notifier = std::make_shared<ThreadPool>("txNotifier", _notifierWorkerNum);
+    m_notifier = std::make_shared<ThreadPool>("txNotifier", m_config->notifierWorkerNum());
 }
 
 bool MemoryStorage::insert(Transaction::Ptr _tx)
 {
-    if (size() >= m_poolLimit)
+    if (size() >= m_config->poolLimit())
     {
         return false;
     }
@@ -69,14 +68,15 @@ Transaction::Ptr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
     return tx;
 }
 
-void MemoryStorage::removeSubmittedTx(TransactionSubmitResult::Ptr _txSubmitResult)
+Transaction::Ptr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::Ptr _txSubmitResult)
 {
     auto tx = remove(_txSubmitResult->txHash());
     if (!tx)
     {
-        return;
+        return nullptr;
     }
     notifyTxResult(tx, _txSubmitResult);
+    return tx;
 }
 
 void MemoryStorage::notifyTxResult(bcos::protocol::Transaction::Ptr _tx,
@@ -112,12 +112,18 @@ void MemoryStorage::notifyTxResult(bcos::protocol::Transaction::Ptr _tx,
     });
 }
 
-void MemoryStorage::batchRemove(TransactionSubmitResults const& _txsResult)
+void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults const& _txsResult)
 {
+    NonceListPtr nonceList = std::make_shared<NonceList>();
     for (auto txResult : _txsResult)
     {
-        removeSubmittedTx(txResult);
+        auto tx = removeSubmittedTx(txResult);
+        nonceList->emplace_back(tx->nonce());
     }
+    // update the ledger nonce
+    m_config->txPoolNonceChecker()->batchInsert(_batchId, nonceList);
+    // update the txpool nonce
+    m_config->txPoolNonceChecker()->batchRemove(*nonceList);
 }
 
 TransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr _txs)
@@ -136,14 +142,108 @@ TransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr 
     return fetchedTxs;
 }
 
-TransactionsPtr MemoryStorage::fetchNewTxs()
+TransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 {
-    return nullptr;
+    auto fetchedTxs = std::make_shared<Transactions>();
+    for (auto tx : m_txsQueue)
+    {
+        if (tx->synced())
+        {
+            continue;
+        }
+        tx->setSynced(true);
+        fetchedTxs->emplace_back(tx);
+        if (fetchedTxs->size() >= _txsLimit)
+        {
+            break;
+        }
+    }
+    return fetchedTxs;
 }
 
-TransactionsPtr MemoryStorage::batchFetchTxs(size_t, TxsHashSetPtr)
+TransactionsPtr MemoryStorage::batchFetchTxs(
+    size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
-    return nullptr;
+    auto fetchedTxs = std::make_shared<Transactions>();
+    for (auto tx : m_txsQueue)
+    {
+        if (_avoidDuplicate && tx->sealed())
+        {
+            continue;
+        }
+        auto txHash = tx->hash();
+        if (m_invalidTxs.count(txHash))
+        {
+            continue;
+        }
+        auto result = m_config->txValidator()->duplicateTx(tx);
+        if (result == TransactionStatus::NonceCheckFail)
+        {
+            continue;
+        }
+        if (result == TransactionStatus::BlockLimitCheckFail)
+        {
+            m_invalidTxs.insert(txHash);
+            m_invalidNonces.insert(tx->nonce());
+            continue;
+        }
+        if (_avoidTxs && _avoidTxs->count(txHash))
+        {
+            continue;
+        }
+        fetchedTxs->emplace_back(tx);
+        tx->setSealed(true);
+        if (fetchedTxs->size() >= _txsLimit)
+        {
+            break;
+        }
+    }
+    removeInvalidTxs();
+    return fetchedTxs;
+}
+
+void MemoryStorage::removeInvalidTxs()
+{
+    auto self = std::weak_ptr<MemoryStorage>(shared_from_this());
+    m_notifier->enqueue([self]() {
+        try
+        {
+            auto memoryStorage = self.lock();
+            if (!memoryStorage)
+            {
+                return;
+            }
+            if (memoryStorage->m_invalidTxs.size() == 0)
+            {
+                return;
+            }
+            tbb::parallel_invoke(
+                [memoryStorage]() {
+                    // remove invalid txs
+                    for (auto const& txHash : memoryStorage->m_invalidTxs)
+                    {
+                        auto txResult =
+                            memoryStorage->m_config->txResultFactory()->createTxSubmitResult(
+                                txHash, (int32_t)TransactionStatus::BlockLimitCheckFail);
+                        memoryStorage->removeSubmittedTx(txResult);
+                    }
+                },
+                [memoryStorage]() {
+                    // remove invalid nonce
+                    for (auto const& nonce : memoryStorage->m_invalidNonces)
+                    {
+                        memoryStorage->m_config->txPoolNonceChecker()->remove(nonce);
+                    }
+                });
+            memoryStorage->m_invalidTxs.clear();
+            memoryStorage->m_invalidNonces.clear();
+        }
+        catch (std::exception const& e)
+        {
+            TXPOOL_LOG(WARNING) << LOG_DESC("removeInvalidTxs exception")
+                                << LOG_KV("errorInfo", boost::diagnostic_information(e));
+        }
+    });
 }
 
 size_t MemoryStorage::size() const

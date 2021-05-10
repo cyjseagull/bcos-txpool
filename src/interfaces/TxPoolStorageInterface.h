@@ -38,16 +38,24 @@ public:
     virtual void batchInsert(bcos::protocol::Transactions const& _txs) = 0;
 
     virtual bcos::protocol::Transaction::Ptr remove(bcos::crypto::HashType const& _txHash) = 0;
-    virtual void removeSubmittedTx(
+    virtual bcos::protocol::Transaction::Ptr removeSubmittedTx(
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) = 0;
-    virtual void batchRemove(bcos::protocol::TransactionSubmitResults const& _txsResult) = 0;
+    virtual void batchRemove(bcos::protocol::BlockNumber _batchId,
+        bcos::protocol::TransactionSubmitResults const& _txsResult) = 0;
 
     // Note: the transactions may be missing from the transaction pool
     virtual bcos::protocol::TransactionsPtr fetchTxs(
         TxsHashSetPtr _missedTxs, TxsHashSetPtr _txsList) = 0;
-    virtual bcos::protocol::TransactionsPtr fetchNewTxs() = 0;
+
+    /**
+     * @brief Get newly inserted transactions from the txpool
+     *
+     * @param _txsLimit Maximum number of transactions that can be obtained at a time
+     * @return List of new transactions
+     */
+    virtual bcos::protocol::TransactionsPtr fetchNewTxs(size_t _txsLimit) = 0;
     virtual bcos::protocol::TransactionsPtr batchFetchTxs(
-        size_t _txsLimit, TxsHashSetPtr _avoidTxs) = 0;
+        size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) = 0;
 
     virtual size_t size() const = 0;
     virtual void clear() = 0;

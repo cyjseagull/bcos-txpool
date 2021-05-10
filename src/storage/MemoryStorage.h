@@ -19,11 +19,10 @@
  * @date 2021-05-07
  */
 #pragma once
-#include "interfaces/TxPoolStorageInterface.h"
-#include "interfaces/TxValidatorInterface.h"
+#include "TxPoolConfig.h"
 #define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1
-#include "tbb/concurrent_set.h"
 #include <bcos-framework/libutilities/ThreadPool.h>
+#include <tbb/concurrent_set.h>
 #include <tbb/concurrent_unordered_map.h>
 
 namespace bcos
@@ -42,22 +41,23 @@ class MemoryStorage : public TxPoolStorageInterface,
                       public std::enable_shared_from_this<MemoryStorage>
 {
 public:
-    MemoryStorage(
-        TxValidatorInterface::Ptr _txValidator, size_t _poolLimit, size_t _notifierWorkerNum = 1);
+    explicit MemoryStorage(TxPoolConfig::Ptr _config);
     ~MemoryStorage() override {}
 
     bool insert(bcos::protocol::Transaction::Ptr _tx) override;
     void batchInsert(bcos::protocol::Transactions const& _txs) override;
 
     bcos::protocol::Transaction::Ptr remove(bcos::crypto::HashType const& _txHash) override;
-    void batchRemove(bcos::protocol::TransactionSubmitResults const& _txsResult) override;
-    void removeSubmittedTx(bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override;
+    void batchRemove(bcos::protocol::BlockNumber _batchId,
+        bcos::protocol::TransactionSubmitResults const& _txsResult) override;
+    bcos::protocol::Transaction::Ptr removeSubmittedTx(
+        bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override;
 
     bcos::protocol::TransactionsPtr fetchTxs(
         TxsHashSetPtr _missedTxs, TxsHashSetPtr _txsList) override;
-    bcos::protocol::TransactionsPtr fetchNewTxs() override;
+    bcos::protocol::TransactionsPtr fetchNewTxs(size_t _txsLimit) override;
     bcos::protocol::TransactionsPtr batchFetchTxs(
-        size_t _txsLimit, TxsHashSetPtr _avoidTxs) override;
+        size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
     size_t size() const override;
     void clear() override;
@@ -66,9 +66,10 @@ protected:
     virtual void notifyTxResult(bcos::protocol::Transaction::Ptr _tx,
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult);
 
+    virtual void removeInvalidTxs();
+
 private:
-    TxValidatorInterface::Ptr m_txValidator;
-    size_t m_poolLimit;
+    TxPoolConfig::Ptr m_config;
     ThreadPool::Ptr m_notifier;
 
     using TransactionQueue =
@@ -79,6 +80,9 @@ private:
     tbb::concurrent_unordered_map<bcos::crypto::HashType, TransactionQueue::iterator,
         std::hash<bcos::crypto::HashType>>
         m_txsTable;
+
+    tbb::concurrent_set<bcos::crypto::HashType> m_invalidTxs;
+    tbb::concurrent_set<bcos::protocol::NonceType> m_invalidNonces;
 };
 }  // namespace txpool
 }  // namespace bcos
