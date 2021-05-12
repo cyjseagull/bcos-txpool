@@ -13,27 +13,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- * @brief Interface to verify the validity of the transaction
- * @file TxValidatorInterface.h
+ * @brief factory for create the txs-sync-message
+ * @file TxsSyncMsgFactory.h
  * @author: yujiechen
- * @date 2021-05-08
+ * @date 2021-05-11
  */
 #pragma once
-#include <bcos-framework/interfaces/protocol/Transaction.h>
-#include <bcos-framework/libprotocol/TransactionStatus.h>
+#include "sync/interfaces/TxsSyncMsgInterface.h"
+
 namespace bcos
 {
-namespace txpool
+namespace sync
 {
-class TxValidatorInterface
+class TxsSyncMsgFactory
 {
 public:
-    using Ptr = std::shared_ptr<TxValidatorInterface>;
-    TxValidatorInterface() = default;
-    virtual ~TxValidatorInterface() {}
+    using Ptr = std::shared_ptr<TxsSyncMsgFactory>;
+    TxsSyncMsgFactory() = default;
+    virtual ~TxsSyncMsgFactory() {}
 
-    virtual bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::Ptr _tx) = 0;
-    virtual bcos::protocol::TransactionStatus duplicateTx(bcos::protocol::Transaction::Ptr _tx) = 0;
-};
-}  // namespace txpool
+    virtual TxsSyncMsgInterface::Ptr createTxsSyncMsg() = 0;
+    virtual TxsSyncMsgInterface::Ptr createTxsSyncMsg(bytesConstRef _data) = 0;
+}
+}  // namespace sync
 }  // namespace bcos

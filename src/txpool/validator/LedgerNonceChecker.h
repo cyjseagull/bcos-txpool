@@ -39,13 +39,14 @@ public:
     }
 
     bcos::protocol::TransactionStatus checkNonce(
-        bcos::protocol::Transaction::Ptr _tx, bool _shouldUpdate = false) override;
+        bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) override;
 
     void batchInsert(
         bcos::protocol::BlockNumber _batchId, bcos::protocol::NonceListPtr _nonceList) override;
 
 protected:
-    virtual bcos::protocol::TransactionStatus checkBlockLimit(bcos::protocol::Transaction::Ptr _tx);
+    virtual bcos::protocol::TransactionStatus checkBlockLimit(
+        bcos::protocol::Transaction::ConstPtr _tx);
     virtual void initNonceCache(std::map<int64_t, bcos::protocol::NonceListPtr> _initialNonces);
 
 private:

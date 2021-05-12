@@ -20,9 +20,11 @@
  * @date 2021-05-08
  */
 #pragma once
-#include "interfaces/NonceCheckerInterface.h"
-#include "interfaces/TxPoolStorageInterface.h"
-#include "interfaces/TxValidatorInterface.h"
+#include "txpool/interfaces/NonceCheckerInterface.h"
+#include "txpool/interfaces/TxPoolStorageInterface.h"
+#include "txpool/interfaces/TxValidatorInterface.h"
+#include <bcos-framework/interfaces/protocol/BlockFactory.h>
+#include <bcos-framework/interfaces/protocol/TransactionFactory.h>
 #include <bcos-framework/interfaces/protocol/TransactionSubmitResultFactory.h>
 namespace bcos
 {
@@ -33,10 +35,14 @@ class TxPoolConfig
 public:
     using Ptr = std::shared_ptr<TxPoolConfig>;
     TxPoolConfig(TxValidatorInterface::Ptr _txValidator,
-        bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory, size_t _poolLimit,
+        bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
+        bcos::protocol::TransactionFactory::Ptr _txFactory,
+        bcos::protocol::BlockFactory::Ptr _blockFactory, size_t _poolLimit,
         size_t _notifierWorkerNum = 1)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
+        m_txFactory(_txFactory),
+        m_blockFactory(_blockFactory),
         m_poolLimit(_poolLimit),
         m_notifierWorkerNum(_notifierWorkerNum)
     {}
@@ -47,9 +53,15 @@ public:
     {
         m_notifierWorkerNum = _notifierWorkerNum;
     }
-    virtual void setPoolLimit(size_t _poolLimit) { m_poolLimit = _poolLimit; }
-
     virtual size_t notifierWorkerNum() const { return m_notifierWorkerNum; }
+
+    virtual void setVerifyWorkerNum(size_t _verifyWorkerNum)
+    {
+        m_verifyWorkerNum = _verifyWorkerNum;
+    }
+    virtual size_t verifyWorkerNum() const { return m_verifyWorkerNum; }
+
+    virtual void setPoolLimit(size_t _poolLimit) { m_poolLimit = _poolLimit; }
     virtual size_t poolLimit() const { return m_poolLimit; }
 
     NonceCheckerInterface::Ptr txPoolNonceChecker() { return m_txPoolNonceChecker; }
@@ -61,14 +73,29 @@ public:
         return m_txResultFactory;
     }
 
+    bcos::protocol::BlockFactory::Ptr blockFactory() { return m_blockFactory; }
+    void setBlockFactory(bcos::protocol::BlockFactory::Ptr _blockFactory)
+    {
+        m_blockFactory = _blockFactory;
+    }
+
+    bcos::protocol::TransactionFactory::Ptr txFactory() { return m_txFactory; }
+    void setTxFactory(bcos::protocol::TransactionFactory::Ptr _txFactory)
+    {
+        m_txFactory = _txFactory;
+    }
+
 private:
     TxValidatorInterface::Ptr m_txValidator;
     bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
+    bcos::protocol::TransactionFactory::Ptr m_txFactory;
+    bcos::protocol::BlockFactory::Ptr m_blockFactory;
     // TODO: create the nonceChecker
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
     NonceCheckerInterface::Ptr m_ledgerNonceChecker;
-    size_t m_poolLimit;
-    size_t m_notifierWorkerNum;
+    size_t m_poolLimit = 15000;
+    size_t m_notifierWorkerNum = 1;
+    size_t m_verifyWorkerNum = 1;
 };
 }  // namespace txpool
 }  // namespace bcos

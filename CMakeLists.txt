@@ -62,6 +62,10 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # install dependencies
 include(InstallBcosFrameworkDependencies)
 
+# for proto generation
+set(PROTO_PATH ${PROJECT_SOURCE_DIR})
+set(SYNC_PROTO_GENERATE_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
 set(BCOS_TXPOOL_TARGET "bcos-txpool")
 add_subdirectory(src)
 include(InstallConfig)

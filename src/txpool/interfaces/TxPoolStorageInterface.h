@@ -34,17 +34,17 @@ public:
     TxPoolStorageInterface() = default;
     virtual ~TxPoolStorageInterface() {}
 
-    virtual bool insert(bcos::protocol::Transaction::Ptr _tx) = 0;
+    virtual bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) = 0;
     virtual void batchInsert(bcos::protocol::Transactions const& _txs) = 0;
 
-    virtual bcos::protocol::Transaction::Ptr remove(bcos::crypto::HashType const& _txHash) = 0;
-    virtual bcos::protocol::Transaction::Ptr removeSubmittedTx(
+    virtual bcos::protocol::Transaction::ConstPtr remove(bcos::crypto::HashType const& _txHash) = 0;
+    virtual bcos::protocol::Transaction::ConstPtr removeSubmittedTx(
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) = 0;
     virtual void batchRemove(bcos::protocol::BlockNumber _batchId,
         bcos::protocol::TransactionSubmitResults const& _txsResult) = 0;
 
     // Note: the transactions may be missing from the transaction pool
-    virtual bcos::protocol::TransactionsPtr fetchTxs(
+    virtual bcos::protocol::ConstTransactionsPtr fetchTxs(
         TxsHashSetPtr _missedTxs, TxsHashSetPtr _txsList) = 0;
 
     /**
@@ -53,9 +53,11 @@ public:
      * @param _txsLimit Maximum number of transactions that can be obtained at a time
      * @return List of new transactions
      */
-    virtual bcos::protocol::TransactionsPtr fetchNewTxs(size_t _txsLimit) = 0;
-    virtual bcos::protocol::TransactionsPtr batchFetchTxs(
+    virtual bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) = 0;
+    virtual bcos::protocol::ConstTransactionsPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) = 0;
+
+    virtual bool exist(bcos::crypto::HashType const& _txHash) = 0;
 
     virtual size_t size() const = 0;
     virtual void clear() = 0;

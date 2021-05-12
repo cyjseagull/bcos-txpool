@@ -37,7 +37,7 @@ public:
     virtual ~NonceCheckerInterface() {}
 
     virtual bcos::protocol::TransactionStatus checkNonce(
-        bcos::protocol::Transaction::Ptr _tx, bool _shouldUpdate = false) = 0;
+        bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) = 0;
     virtual void insert(bcos::protocol::NonceType const& _nonce) = 0;
     virtual void batchInsert(
         bcos::protocol::BlockNumber _batchId, bcos::protocol::NonceListPtr _nonceList) = 0;

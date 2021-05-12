@@ -19,7 +19,7 @@
  * @date 2021-05-10
  */
 #pragma once
-#include "interfaces/NonceCheckerInterface.h"
+#include "txpool/interfaces/NonceCheckerInterface.h"
 #include <tbb/concurrent_unordered_set.h>
 
 namespace bcos
@@ -31,7 +31,7 @@ class TxPoolNonceChecker : public NonceCheckerInterface
 public:
     TxPoolNonceChecker() = default;
     bcos::protocol::TransactionStatus checkNonce(
-        bcos::protocol::Transaction::Ptr _tx, bool _shouldUpdate = false) override;
+        bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) override;
     void insert(bcos::protocol::NonceType const& _nonce) override;
     void batchInsert(
         bcos::protocol::BlockNumber _batchId, bcos::protocol::NonceListPtr _nonceList) override;

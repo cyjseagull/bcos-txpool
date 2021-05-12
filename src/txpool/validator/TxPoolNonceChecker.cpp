@@ -25,18 +25,18 @@ using namespace bcos::protocol;
 using namespace bcos::txpool;
 
 TransactionStatus TxPoolNonceChecker::checkNonce(
-    bcos::protocol::Transaction::Ptr _tx, bool _shouldUpdate)
+    bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate)
 {
     auto nonce = _tx->nonce();
-    if (!m_nonceCache.count(nonce))
+    if (m_nonceCache.count(nonce))
     {
-        return TransactionStatus::None;
+        return TransactionStatus::NonceCheckFail;
     }
     if (_shouldUpdate)
     {
         m_nonceCache.insert(nonce);
     }
-    return TransactionStatus::NonceCheckFail;
+    return TransactionStatus::None;
 }
 
 void TxPoolNonceChecker::insert(NonceType const& _nonce)

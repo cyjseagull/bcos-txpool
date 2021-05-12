@@ -33,7 +33,7 @@ void LedgerNonceChecker::initNonceCache(
     }
 }
 
-TransactionStatus LedgerNonceChecker::checkNonce(Transaction::Ptr _tx, bool _shouldUpdate)
+TransactionStatus LedgerNonceChecker::checkNonce(Transaction::ConstPtr _tx, bool _shouldUpdate)
 {
     // check nonce
     auto status = TxPoolNonceChecker::checkNonce(_tx, _shouldUpdate);
@@ -45,7 +45,7 @@ TransactionStatus LedgerNonceChecker::checkNonce(Transaction::Ptr _tx, bool _sho
     return checkBlockLimit(_tx);
 }
 
-TransactionStatus LedgerNonceChecker::checkBlockLimit(bcos::protocol::Transaction::Ptr _tx)
+TransactionStatus LedgerNonceChecker::checkBlockLimit(bcos::protocol::Transaction::ConstPtr _tx)
 {
     auto blockNumber = m_blockNumber.load();
     if (blockNumber >= _tx->blockLimit() || (blockNumber + m_blockLimit) < _tx->blockLimit())

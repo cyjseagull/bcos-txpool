@@ -31,20 +31,20 @@ MemoryStorage::MemoryStorage(TxPoolConfig::Ptr _config) : m_config(_config)
     m_notifier = std::make_shared<ThreadPool>("txNotifier", m_config->notifierWorkerNum());
 }
 
-bool MemoryStorage::insert(Transaction::Ptr _tx)
+TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
     if (size() >= m_config->poolLimit())
     {
-        return false;
+        return TransactionStatus::TxPoolIsFull;
     }
     auto txHash = _tx->hash();
     if (m_txsTable.count(txHash))
     {
-        return false;
+        return TransactionStatus::AlreadyInTxPool;
     }
     auto txIterator = m_txsQueue.emplace(_tx).first;
     m_txsTable[txHash] = txIterator;
-    return true;
+    return TransactionStatus::None;
 }
 
 void MemoryStorage::batchInsert(Transactions const& _txs)
@@ -55,7 +55,7 @@ void MemoryStorage::batchInsert(Transactions const& _txs)
     }
 }
 
-Transaction::Ptr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
+Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
 {
     if (!m_txsTable.count(_txHash))
     {
@@ -68,7 +68,7 @@ Transaction::Ptr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
     return tx;
 }
 
-Transaction::Ptr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::Ptr _txSubmitResult)
+Transaction::ConstPtr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::Ptr _txSubmitResult)
 {
     auto tx = remove(_txSubmitResult->txHash());
     if (!tx)
@@ -79,8 +79,8 @@ Transaction::Ptr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::Ptr _
     return tx;
 }
 
-void MemoryStorage::notifyTxResult(bcos::protocol::Transaction::Ptr _tx,
-    bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult)
+void MemoryStorage::notifyTxResult(
+    Transaction::ConstPtr _tx, TransactionSubmitResult::Ptr _txSubmitResult)
 {
     auto txSubmitCallback = _tx->submitCallback();
     if (!txSubmitCallback)
@@ -126,9 +126,9 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
     m_config->txPoolNonceChecker()->batchRemove(*nonceList);
 }
 
-TransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr _txs)
+ConstTransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr _txs)
 {
-    auto fetchedTxs = std::make_shared<Transactions>();
+    auto fetchedTxs = std::make_shared<ConstTransactions>();
     for (auto const& hash : *_txs)
     {
         if (!m_txsTable.count(hash))
@@ -142,9 +142,9 @@ TransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr 
     return fetchedTxs;
 }
 
-TransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
+ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 {
-    auto fetchedTxs = std::make_shared<Transactions>();
+    auto fetchedTxs = std::make_shared<ConstTransactions>();
     for (auto tx : m_txsQueue)
     {
         if (tx->synced())
@@ -161,10 +161,10 @@ TransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
     return fetchedTxs;
 }
 
-TransactionsPtr MemoryStorage::batchFetchTxs(
+ConstTransactionsPtr MemoryStorage::batchFetchTxs(
     size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
-    auto fetchedTxs = std::make_shared<Transactions>();
+    auto fetchedTxs = std::make_shared<ConstTransactions>();
     for (auto tx : m_txsQueue)
     {
         if (_avoidDuplicate && tx->sealed())

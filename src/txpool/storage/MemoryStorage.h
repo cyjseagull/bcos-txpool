@@ -31,8 +31,8 @@ namespace txpool
 {
 struct TransactionCompare
 {
-    bool operator()(
-        bcos::protocol::Transaction::Ptr _first, bcos::protocol::Transaction::Ptr _second) const
+    bool operator()(bcos::protocol::Transaction::ConstPtr _first,
+        bcos::protocol::Transaction::ConstPtr _second) const
     {
         return _first->importTime() <= _second->importTime();
     }
@@ -44,26 +44,27 @@ public:
     explicit MemoryStorage(TxPoolConfig::Ptr _config);
     ~MemoryStorage() override {}
 
-    bool insert(bcos::protocol::Transaction::Ptr _tx) override;
+    bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) override;
     void batchInsert(bcos::protocol::Transactions const& _txs) override;
 
-    bcos::protocol::Transaction::Ptr remove(bcos::crypto::HashType const& _txHash) override;
+    bcos::protocol::Transaction::ConstPtr remove(bcos::crypto::HashType const& _txHash) override;
     void batchRemove(bcos::protocol::BlockNumber _batchId,
         bcos::protocol::TransactionSubmitResults const& _txsResult) override;
-    bcos::protocol::Transaction::Ptr removeSubmittedTx(
+    bcos::protocol::Transaction::ConstPtr removeSubmittedTx(
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override;
 
-    bcos::protocol::TransactionsPtr fetchTxs(
+    bcos::protocol::ConstTransactionsPtr fetchTxs(
         TxsHashSetPtr _missedTxs, TxsHashSetPtr _txsList) override;
-    bcos::protocol::TransactionsPtr fetchNewTxs(size_t _txsLimit) override;
-    bcos::protocol::TransactionsPtr batchFetchTxs(
+    bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;
+    bcos::protocol::ConstTransactionsPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
+    bool exist(bcos::crypto::HashType const& _txHash) override { return m_txsTable.count(_txHash); }
     size_t size() const override;
     void clear() override;
 
 protected:
-    virtual void notifyTxResult(bcos::protocol::Transaction::Ptr _tx,
+    virtual void notifyTxResult(bcos::protocol::Transaction::ConstPtr _tx,
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult);
 
     virtual void removeInvalidTxs();
@@ -73,7 +74,7 @@ private:
     ThreadPool::Ptr m_notifier;
 
     using TransactionQueue =
-        tbb::concurrent_set<bcos::protocol::Transaction::Ptr, TransactionCompare>;
+        tbb::concurrent_set<bcos::protocol::Transaction::ConstPtr, TransactionCompare>;
     TransactionQueue m_txsQueue;
     // to accelerate txs query for unordered for unorder performance is higher than non-unorder in
     // big data scenarios
