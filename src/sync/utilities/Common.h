@@ -19,6 +19,9 @@
  * @date 2021-05-11
  */
 #pragma once
+#include <bcos-framework/libutilites/Log.h>
+
+#define SYNC_LOG LOG_BADGE("SYNC")
 namespace bcos
 {
 namespace sync

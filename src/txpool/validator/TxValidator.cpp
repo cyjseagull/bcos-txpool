@@ -27,6 +27,10 @@ using namespace bcos::txpool;
 TransactionStatus TxValidator::verify(bcos::protocol::Transaction::Ptr _tx)
 {
     // TODO: check the node in belongs to the group or not
+    if (_tx->invalid())
+    {
+        return TransactionStatus::InvalidSignature;
+    }
     auto status = duplicateTx(_tx);
     if (status != TransactionStatus::None)
     {

@@ -44,6 +44,11 @@ public:
     explicit MemoryStorage(TxPoolConfig::Ptr _config);
     ~MemoryStorage() override {}
 
+    bcos::protocol::TransactionStatus submitTransaction(bytesPointer _txData,
+        bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
+    bcos::protocol::TransactionStatus submitTransaction(bcos::protocol::Transaction::Ptr _tx,
+        bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
+
     bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) override;
     void batchInsert(bcos::protocol::Transactions const& _txs) override;
 
@@ -64,6 +69,10 @@ public:
     void clear() override;
 
 protected:
+    virtual void notifyInvalidReceipt(bcos::crypto::HashType const& _txHash,
+        bcos::protocol::TransactionStatus _status,
+        bcos::protocol::TxSubmitCallback _txSubmitCallback);
+
     virtual void notifyTxResult(bcos::protocol::Transaction::ConstPtr _tx,
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult);
 

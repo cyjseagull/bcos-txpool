@@ -39,19 +39,8 @@ void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallbac
             {
                 return;
             }
-            try
-            {
-                auto tx = txpool->m_config->txFactory()->createTransaction(ref(*_txData), false);
-                tx->setSubmitCallback(_txSubmitCallback);
-                txpool->submitTransaction(tx, _txSubmitCallback);
-            }
-            catch (std::exception const& e)
-            {
-                TXPOOL_LOG(WARNING) << LOG_DESC("Invalid transaction for decode exception")
-                                    << LOG_KV("error", boost::diagnostic_information(e));
-                txpool->notifyReceipt(HashType(), TransactionStatus::Malform, _txSubmitCallback);
-                return;
-            }
+            auto txpoolStorage = txpool->m_txpoolStorage;
+            txpoolStorage->submitTransaction(_txData, _txSubmitCallback);
         }
         catch (std::exception const& e)
         {
@@ -59,37 +48,6 @@ void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallbac
                                 << LOG_KV("errorInfo", boost::diagnostic_information(e));
         }
     });
-}
-
-TransactionStatus TxPool::submitTransaction(
-    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
-{
-    // verify the transaction
-    auto result = m_config->txValidator()->verify(_tx);
-    if (result == TransactionStatus::None)
-    {
-        result = m_txpoolStorage->insert(_tx);
-    }
-    if (result != TransactionStatus::None && _txSubmitCallback)
-    {
-        notifyReceipt(_tx->hash(), result, _txSubmitCallback);
-    }
-    return result;
-}
-
-void TxPool::notifyReceipt(
-    HashType const& _txHash, TransactionStatus _status, TxSubmitCallback _txSubmitCallback)
-{
-    if (!_txSubmitCallback)
-    {
-        return;
-    }
-    // notify txResult
-    auto txResult = m_config->txResultFactory()->createTxSubmitResult(_txHash, (int32_t)_status);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _txSubmitCallback(error, txResult);
-    TXPOOL_LOG(WARNING) << LOG_DESC("notifyReceipt: reject invalid tx")
-                        << LOG_KV("tx", _txHash.abridged()) << LOG_KV("exception", _status);
 }
 
 void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,

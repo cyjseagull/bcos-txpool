@@ -24,11 +24,64 @@
 
 using namespace bcos;
 using namespace bcos::txpool;
+using namespace bcos::crypto;
 using namespace bcos::protocol;
 
 MemoryStorage::MemoryStorage(TxPoolConfig::Ptr _config) : m_config(_config)
 {
     m_notifier = std::make_shared<ThreadPool>("txNotifier", m_config->notifierWorkerNum());
+}
+
+TransactionStatus MemoryStorage::submitTransaction(
+    bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
+{
+    try
+    {
+        auto tx = m_config->txFactory()->createTransaction(ref(*_txData), false);
+        return submitTransaction(tx, _txSubmitCallback);
+    }
+    catch (std::exception const& e)
+    {
+        TXPOOL_LOG(WARNING) << LOG_DESC("Invalid transaction for decode exception")
+                            << LOG_KV("error", boost::diagnostic_information(e));
+        notifyInvalidReceipt(HashType(), TransactionStatus::Malform, _txSubmitCallback);
+        return TransactionStatus::Malform;
+    }
+}
+
+TransactionStatus MemoryStorage::submitTransaction(
+    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
+{
+    if (_txSubmitCallback)
+    {
+        _tx->setSubmitCallback(_txSubmitCallback);
+    }
+    // verify the transaction
+    auto result = m_config->txValidator()->verify(_tx);
+    if (result == TransactionStatus::None)
+    {
+        result = insert(_tx);
+    }
+    if (result != TransactionStatus::None && _txSubmitCallback)
+    {
+        notifyInvalidReceipt(_tx->hash(), result, _txSubmitCallback);
+    }
+    return result;
+}
+
+void MemoryStorage::notifyInvalidReceipt(
+    HashType const& _txHash, TransactionStatus _status, TxSubmitCallback _txSubmitCallback)
+{
+    if (!_txSubmitCallback)
+    {
+        return;
+    }
+    // notify txResult
+    auto txResult = m_config->txResultFactory()->createTxSubmitResult(_txHash, (int32_t)_status);
+    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
+    _txSubmitCallback(error, txResult);
+    TXPOOL_LOG(WARNING) << LOG_DESC("notifyReceipt: reject invalid tx")
+                        << LOG_KV("tx", _txHash.abridged()) << LOG_KV("exception", _status);
 }
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)

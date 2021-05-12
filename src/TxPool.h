@@ -73,13 +73,6 @@ public:
     void sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesPointer _data, std::function<void(bytesPointer _respData)> _sendResponse) override;
 
-protected:
-    virtual bcos::protocol::TransactionStatus submitTransaction(
-        bcos::protocol::Transaction::Ptr _tx, bcos::protocol::TxSubmitCallback _txSubmitCallback);
-    void notifyReceipt(bcos::crypto::HashType const& _txHash,
-        bcos::protocol::TransactionStatus _status,
-        bcos::protocol::TxSubmitCallback _txSubmitCallback);
-
 private:
     TxPoolConfig::Ptr m_config;
     TxPoolStorageInterface::Ptr m_txpoolStorage;

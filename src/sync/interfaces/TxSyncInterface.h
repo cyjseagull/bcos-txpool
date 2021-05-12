@@ -22,8 +22,6 @@
 #include <bcos-framework/interfaces/crypto/CommonType.h>
 #include <bcos-framework/interfaces/protocol/Block.h>
 
-#define SYNC_LOG LOG_BADGE("SYNC")
-
 namespace bcos
 {
 namespace sync
