@@ -66,6 +66,12 @@ public:
     void sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesPointer _data, std::function<void(bytesConstRef _respData)> _sendResponse) override;
 
+    void notifyConnectedNodes(bcos::crypto::NodeIDSet const& _connectedNodes,
+        std::function<void(Error::Ptr)> _onRecvResponse) override;
+
+    void notifyConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList,
+        std::function<void(Error::Ptr)> _onRecvResponse) override;
+
 private:
     TxPoolConfig::Ptr m_config;
     TxPoolStorageInterface::Ptr m_txpoolStorage;

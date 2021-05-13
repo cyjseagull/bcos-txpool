@@ -19,6 +19,7 @@
  * @date 2021-05-10
  */
 #pragma once
+#include "sync/TransactionSyncConfig.h"
 #include <bcos-framework/interfaces/crypto/CommonType.h>
 #include <bcos-framework/interfaces/protocol/Block.h>
 
@@ -30,7 +31,8 @@ class TransactionSyncInterface
 {
 public:
     using Ptr = std::shared_ptr<TransactionSyncInterface>;
-    TransactionSyncInterface() = default;
+    explicit TransactionSyncInterface(TransactionSyncConfig::Ptr _config) : m_config(_config) {}
+
     virtual ~TransactionSyncInterface() {}
 
     virtual void start() = 0;
@@ -42,6 +44,11 @@ public:
 
     virtual void onRecvSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesPointer _data, std::function<void(bytesConstRef _response)> _sendResponse) = 0;
+
+    virtual TransactionSyncConfig::Ptr config() { return m_config; }
+
+protected:
+    TransactionSyncConfig::Ptr m_config;
 };
 }  // namespace sync
 }  // namespace bcos

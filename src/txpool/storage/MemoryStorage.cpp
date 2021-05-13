@@ -60,6 +60,10 @@ TransactionStatus MemoryStorage::submitTransaction(Transaction::ConstPtr _tx)
     if (result == TransactionStatus::None)
     {
         result = insert(_tx);
+        {
+            WriteGuard l(x_missedTxs);
+            m_missedTxs.unsafe_erase(_tx->hash());
+        }
     }
     auto txSubmitCallback = _tx->submitCallback();
     if (result != TransactionStatus::None && txSubmitCallback)
@@ -86,6 +90,7 @@ void MemoryStorage::notifyInvalidReceipt(
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
+    ReadGuard l(x_txpoolMutex);
     if (size() >= m_config->poolLimit())
     {
         return TransactionStatus::TxPoolIsFull;
@@ -106,9 +111,14 @@ void MemoryStorage::batchInsert(Transactions const& _txs)
     {
         insert(tx);
     }
+    WriteGuard l(x_missedTxs);
+    for (auto tx : _txs)
+    {
+        m_missedTxs.unsafe_erase(tx->hash());
+    }
 }
 
-Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
+Transaction::ConstPtr MemoryStorage::removeWithoutLock(bcos::crypto::HashType const& _txHash)
 {
     if (!m_txsTable.count(_txHash))
     {
@@ -118,6 +128,24 @@ Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHas
     auto tx = *(txIterator);
     m_txsTable.unsafe_erase(_txHash);
     m_txsQueue.unsafe_erase(txIterator);
+    return tx;
+}
+
+Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
+{
+    WriteGuard l(x_txpoolMutex);
+    return removeWithoutLock(_txHash);
+}
+
+Transaction::ConstPtr MemoryStorage::removeSubmittedTxWithoutLock(
+    TransactionSubmitResult::Ptr _txSubmitResult)
+{
+    auto tx = removeWithoutLock(_txSubmitResult->txHash());
+    if (!tx)
+    {
+        return nullptr;
+    }
+    notifyTxResult(tx, _txSubmitResult);
     return tx;
 }
 
@@ -131,7 +159,6 @@ Transaction::ConstPtr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::
     notifyTxResult(tx, _txSubmitResult);
     return tx;
 }
-
 void MemoryStorage::notifyTxResult(
     Transaction::ConstPtr _tx, TransactionSubmitResult::Ptr _txSubmitResult)
 {
@@ -168,10 +195,14 @@ void MemoryStorage::notifyTxResult(
 void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults const& _txsResult)
 {
     NonceListPtr nonceList = std::make_shared<NonceList>();
-    for (auto txResult : _txsResult)
     {
-        auto tx = removeSubmittedTx(txResult);
-        nonceList->emplace_back(tx->nonce());
+        // batch remove
+        WriteGuard l(x_txpoolMutex);
+        for (auto txResult : _txsResult)
+        {
+            auto tx = removeSubmittedTxWithoutLock(txResult);
+            nonceList->emplace_back(tx->nonce());
+        }
     }
     // update the ledger nonce
     m_config->txPoolNonceChecker()->batchInsert(_batchId, nonceList);
@@ -181,6 +212,7 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
 
 ConstTransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList const& _txs)
 {
+    ReadGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<ConstTransactions>();
     _missedTxs.clear();
     for (auto const& hash : _txs)
@@ -198,6 +230,7 @@ ConstTransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList cons
 
 ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 {
+    ReadGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<ConstTransactions>();
     for (auto tx : m_txsQueue)
     {
@@ -218,6 +251,7 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 ConstTransactionsPtr MemoryStorage::batchFetchTxs(
     size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
+    UpgradableGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<ConstTransactions>();
     for (auto tx : m_txsQueue)
     {
@@ -252,6 +286,7 @@ ConstTransactionsPtr MemoryStorage::batchFetchTxs(
             break;
         }
     }
+    UpgradeGuard ul(l);
     removeInvalidTxs();
     return fetchedTxs;
 }
@@ -279,7 +314,7 @@ void MemoryStorage::removeInvalidTxs()
                         auto txResult =
                             memoryStorage->m_config->txResultFactory()->createTxSubmitResult(
                                 txHash, (int32_t)TransactionStatus::BlockLimitCheckFail);
-                        memoryStorage->removeSubmittedTx(txResult);
+                        memoryStorage->removeSubmittedTxWithoutLock(txResult);
                     }
                 },
                 [memoryStorage]() {
@@ -302,12 +337,49 @@ void MemoryStorage::removeInvalidTxs()
 
 size_t MemoryStorage::size() const
 {
+    ReadGuard l(x_txpoolMutex);
     return m_txsTable.size();
 }
 
 void MemoryStorage::clear()
 {
+    WriteGuard l(x_txpoolMutex);
     // Note: must clear m_txsTable firstly
     m_txsTable.clear();
     m_txsQueue.clear();
+}
+
+HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeIDPtr _peer)
+{
+    ReadGuard l(x_txpoolMutex);
+    for (auto txHash : _txsHashList)
+    {
+        if (!m_txsTable.count(txHash))
+        {
+            continue;
+        }
+        auto tx = *(m_txsTable[txHash]);
+        tx->appendKnownNode(_peer);
+    }
+    auto unknownTxsList = std::make_shared<HashList>();
+    UpgradableGuard missedTxsLock(x_missedTxs);
+    for (auto const& txHash : _txsHashList)
+    {
+        if (m_txsTable.count(txHash))
+        {
+            continue;
+        }
+        if (m_missedTxs.count(txHash))
+        {
+            continue;
+        }
+        unknownTxsList->push_back(txHash);
+        m_missedTxs.insert(txHash);
+    }
+    if (m_missedTxs.size() >= m_config->poolLimit())
+    {
+        UpgradeGuard ul(missedTxsLock);
+        m_missedTxs.clear();
+    }
+    return unknownTxsList;
 }

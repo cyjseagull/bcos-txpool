@@ -38,9 +38,10 @@ public:
     using Ptr = std::shared_ptr<TransactionSync>;
     explicit TransactionSync(TransactionSyncConfig::Ptr _config)
       : Worker("sync", 0),
-        m_config(_config),
+        TransactionSyncInterface(_config),
         m_downloadTxsBuffer(std::make_shared<TxsSyncMsgList>()),
-        m_worker(std::make_shared<ThreadPool>("sync", 1))
+        m_worker(std::make_shared<ThreadPool>("sync", 1)),
+        m_txsRequester(std::make_shared<ThreadPool>("txsRequester", 1))
     {}
 
     ~TransactionSync() {}
@@ -61,6 +62,11 @@ protected:
     virtual void maintainTransactions();
     virtual void broadcastTxsFromRpc(bcos::protocol::ConstTransactionsPtr _txs);
     virtual void forwardTxsFromP2P(bcos::protocol::ConstTransactionsPtr _txs);
+    virtual bcos::crypto::NodeIDListPtr selectPeers(bcos::protocol::Transaction::ConstPtr _tx,
+        bcos::crypto::NodeIDSet const& _connectedPeers,
+        bcos::consensus::ConsensusNodeList const& _consensusNodeList, size_t _expectedSize);
+    virtual void onPeerTxsStatus(
+        bcos::crypto::NodeIDPtr _fromNode, TxsSyncMsgInterface::Ptr _txsStatus);
 
     virtual void maintainDownloadingTransactions();
 
@@ -90,13 +96,14 @@ protected:
         m_downloadTxsBuffer = std::make_shared<TxsSyncMsgList>();
         return localBuffer;
     }
-    virtual bool importDownloadedTxs(bcos::protocol::Block::Ptr _txsBuffer);
+    virtual bool importDownloadedTxs(
+        bcos::crypto::NodeIDPtr _fromNode, bcos::protocol::Block::Ptr _txsBuffer);
 
 private:
-    TransactionSyncConfig::Ptr m_config;
     TxsSyncMsgListPtr m_downloadTxsBuffer;
     SharedMutex x_downloadTxsBuffer;
     ThreadPool::Ptr m_worker;
+    ThreadPool::Ptr m_txsRequester;
 
     std::atomic_bool m_running = {false};
 

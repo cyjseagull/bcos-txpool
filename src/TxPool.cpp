@@ -107,6 +107,21 @@ void TxPool::sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr
     m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
 }
 
+void TxPool::notifyConnectedNodes(
+    bcos::crypto::NodeIDSet const& _connectedNodes, std::function<void(Error::Ptr)> _onRecvResponse)
+{
+    m_transactionSync->config()->setConnectedNodeList(_connectedNodes);
+    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+}
+
+
+void TxPool::notifyConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList,
+    std::function<void(Error::Ptr)> _onRecvResponse)
+{
+    m_transactionSync->config()->setConsensusNodeList(_consensusNodeList);
+    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+}
+
 void TxPool::asyncStoreTxs(
     bcos::crypto::HashType const&, bytesConstRef, std::function<void(Error::Ptr)>)
 {}

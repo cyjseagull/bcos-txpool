@@ -69,7 +69,15 @@ public:
     size_t size() const override;
     void clear() override;
 
+    bcos::crypto::HashListPtr filterUnknownTxs(
+        bcos::crypto::HashList const& _txsHashList, bcos::crypto::NodeIDPtr _peer) override;
+
 protected:
+    virtual bcos::protocol::Transaction::ConstPtr removeWithoutLock(
+        bcos::crypto::HashType const& _txHash);
+    virtual bcos::protocol::Transaction::ConstPtr removeSubmittedTxWithoutLock(
+        bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult);
+
     virtual void notifyInvalidReceipt(bcos::crypto::HashType const& _txHash,
         bcos::protocol::TransactionStatus _status,
         bcos::protocol::TxSubmitCallback _txSubmitCallback);
@@ -92,8 +100,13 @@ private:
         std::hash<bcos::crypto::HashType>>
         m_txsTable;
 
+    mutable SharedMutex x_txpoolMutex;
+
     tbb::concurrent_set<bcos::crypto::HashType> m_invalidTxs;
     tbb::concurrent_set<bcos::protocol::NonceType> m_invalidNonces;
+
+    tbb::concurrent_set<bcos::crypto::HashType> m_missedTxs;
+    mutable SharedMutex x_missedTxs;
 };
 }  // namespace txpool
 }  // namespace bcos
