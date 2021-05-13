@@ -32,7 +32,7 @@ public:
     TxValidatorInterface() = default;
     virtual ~TxValidatorInterface() {}
 
-    virtual bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::Ptr _tx) = 0;
+    virtual bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::ConstPtr _tx) = 0;
     virtual bcos::protocol::TransactionStatus duplicateTx(
         bcos::protocol::Transaction::ConstPtr _tx) = 0;
 };

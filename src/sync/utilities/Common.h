@@ -19,9 +19,9 @@
  * @date 2021-05-11
  */
 #pragma once
-#include <bcos-framework/libutilites/Log.h>
+#include <bcos-framework/libutilities/Log.h>
 
-#define SYNC_LOG LOG_BADGE("SYNC")
+#define SYNC_LOG(LEVEL) LOG(LEVEL) << LOG_BADGE("SYNC")
 namespace bcos
 {
 namespace sync
@@ -30,7 +30,8 @@ enum TxsSyncPacketType : int32_t
 {
     TxsPacket = 0x00,
     TxsStatusPacket = 0x01,
-    TxsRequestPacekt = 0x02,
+    TxsRequestPacket = 0x02,
+    TxsResponsePacket = 0x03,
     PacketCount
 };
 }

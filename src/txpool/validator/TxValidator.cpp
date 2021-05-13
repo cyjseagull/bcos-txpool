@@ -24,7 +24,7 @@ using namespace bcos;
 using namespace bcos::protocol;
 using namespace bcos::txpool;
 
-TransactionStatus TxValidator::verify(bcos::protocol::Transaction::Ptr _tx)
+TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
 {
     // TODO: check the node in belongs to the group or not
     if (_tx->invalid())

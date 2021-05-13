@@ -39,7 +39,7 @@ public:
         m_chainId(_chainId)
     {}
     ~TxValidator() override {}
-    bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::Ptr _tx) override;
+    bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::ConstPtr _tx) override;
     bcos::protocol::TransactionStatus duplicateTx(
         bcos::protocol::Transaction::ConstPtr _tx) override;
 

@@ -13,8 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- * @brief implementation for tx sync
- * @file TxSync.h
+ * @brief interfaces for transaction sync
+ * @file TransactionSyncInterface.h
  * @author: yujiechen
  * @date 2021-05-10
  */
@@ -26,12 +26,12 @@ namespace bcos
 {
 namespace sync
 {
-class TxSyncInterface
+class TransactionSyncInterface
 {
 public:
-    using Ptr = std::shared_ptr<TxSyncInterface>;
-    TxSyncInterface() = default;
-    virtual ~TxSyncInterface() {}
+    using Ptr = std::shared_ptr<TransactionSyncInterface>;
+    TransactionSyncInterface() = default;
+    virtual ~TransactionSyncInterface() {}
 
     virtual void start() = 0;
     virtual void stop() = 0;
@@ -41,7 +41,7 @@ public:
         std::function<void(Error::Ptr, bool)> _onVerifyFinished) = 0;
 
     virtual void onRecvSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
-        bytesPointer _data, std::function<void(bytesPointer _respData)> _sendResponse) = 0;
+        bytesPointer _data, std::function<void(bytesConstRef _response)> _sendResponse) = 0;
 };
 }  // namespace sync
 }  // namespace bcos

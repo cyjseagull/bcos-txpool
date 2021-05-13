@@ -38,7 +38,11 @@ TransactionStatus MemoryStorage::submitTransaction(
     try
     {
         auto tx = m_config->txFactory()->createTransaction(ref(*_txData), false);
-        return submitTransaction(tx, _txSubmitCallback);
+        if (_txSubmitCallback)
+        {
+            tx->setSubmitCallback(_txSubmitCallback);
+        }
+        return submitTransaction(tx);
     }
     catch (std::exception const& e)
     {
@@ -49,22 +53,18 @@ TransactionStatus MemoryStorage::submitTransaction(
     }
 }
 
-TransactionStatus MemoryStorage::submitTransaction(
-    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
+TransactionStatus MemoryStorage::submitTransaction(Transaction::ConstPtr _tx)
 {
-    if (_txSubmitCallback)
-    {
-        _tx->setSubmitCallback(_txSubmitCallback);
-    }
     // verify the transaction
     auto result = m_config->txValidator()->verify(_tx);
     if (result == TransactionStatus::None)
     {
         result = insert(_tx);
     }
-    if (result != TransactionStatus::None && _txSubmitCallback)
+    auto txSubmitCallback = _tx->submitCallback();
+    if (result != TransactionStatus::None && txSubmitCallback)
     {
-        notifyInvalidReceipt(_tx->hash(), result, _txSubmitCallback);
+        notifyInvalidReceipt(_tx->hash(), result, txSubmitCallback);
     }
     return result;
 }
@@ -179,14 +179,15 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
     m_config->txPoolNonceChecker()->batchRemove(*nonceList);
 }
 
-ConstTransactionsPtr MemoryStorage::fetchTxs(TxsHashSetPtr _missedTxs, TxsHashSetPtr _txs)
+ConstTransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList const& _txs)
 {
     auto fetchedTxs = std::make_shared<ConstTransactions>();
-    for (auto const& hash : *_txs)
+    _missedTxs.clear();
+    for (auto const& hash : _txs)
     {
         if (!m_txsTable.count(hash))
         {
-            _missedTxs->insert(hash);
+            _missedTxs.emplace_back(hash);
             continue;
         }
         auto tx = *(m_txsTable[hash]);

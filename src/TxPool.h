@@ -19,7 +19,7 @@
  * @date 2021-05-10
  */
 #include "TxPoolConfig.h"
-#include "sync/interfaces/TxSyncInterface.h"
+#include "sync/interfaces/TransactionSyncInterface.h"
 #include "txpool/interfaces/TxPoolStorageInterface.h"
 #include <bcos-framework/interfaces/txpool/TxPoolInterface.h>
 #include <bcos-framework/libutilities/ThreadPool.h>
@@ -31,8 +31,8 @@ class TxPool : public TxPoolInterface, public std::enable_shared_from_this<TxPoo
 {
 public:
     TxPool(TxPoolConfig::Ptr _config, TxPoolStorageInterface::Ptr _txpoolStorage,
-        bcos::sync::TxSyncInterface::Ptr _txSync)
-      : m_config(_config), m_txpoolStorage(_txpoolStorage), m_txSync(_txSync)
+        bcos::sync::TransactionSyncInterface::Ptr _transactionSync)
+      : m_config(_config), m_txpoolStorage(_txpoolStorage), m_transactionSync(_transactionSync)
     {
         m_worker = std::make_shared<ThreadPool>("submitter", _config->verifyWorkerNum());
     }
@@ -63,20 +63,13 @@ public:
     void asyncFillBlock(
         bcos::protocol::Block::Ptr _block, std::function<void(Error)> _onBlockFilled) override;
 
-    // for txs sync
-    void asyncGetForwardTxsInfo(
-        std::function<void(Error::Ptr, TxsHashSetPtr)> _onRecvForwardTxs) override;
-
-    void asyncFetchMissedTxs(TxsHashSetPtr _missedTxs,
-        std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)> _onRecvTxs) override;
-
     void sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
-        bytesPointer _data, std::function<void(bytesPointer _respData)> _sendResponse) override;
+        bytesPointer _data, std::function<void(bytesConstRef _respData)> _sendResponse) override;
 
 private:
     TxPoolConfig::Ptr m_config;
     TxPoolStorageInterface::Ptr m_txpoolStorage;
-    bcos::sync::TxSyncInterface::Ptr m_txSync;
+    bcos::sync::TransactionSyncInterface::Ptr m_transactionSync;
     ThreadPool::Ptr m_worker;
 };
 }  // namespace txpool

@@ -98,24 +98,17 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
                       << LOG_KV("missedTxs", missedTxs->size());
 
     // fetch missed txs to the _generatedNodeID
-    m_txSync->requestMissedTxs(_generatedNodeID, missedTxs, _onVerifyFinished);
+    m_transactionSync->requestMissedTxs(_generatedNodeID, missedTxs, _onVerifyFinished);
 }
 
 void TxPool::sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
-    bytesPointer _data, std::function<void(bytesPointer _respData)> _sendResponse)
+    bytesPointer _data, std::function<void(bytesConstRef _respData)> _sendResponse)
 {
-    m_txSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
+    m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
 }
-
-void TxPool::asyncFetchMissedTxs(
-    TxsHashSetPtr, std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)>)
-{}
 
 void TxPool::asyncStoreTxs(
     bcos::crypto::HashType const&, bytesConstRef, std::function<void(Error::Ptr)>)
 {}
-
-// for txs sync
-void TxPool::asyncGetForwardTxsInfo(std::function<void(Error::Ptr, TxsHashSetPtr)>) {}
 
 void TxPool::asyncFillBlock(bcos::protocol::Block::Ptr, std::function<void(Error)>) {}

@@ -37,14 +37,11 @@ public:
     TxPoolConfig(TxValidatorInterface::Ptr _txValidator,
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::TransactionFactory::Ptr _txFactory,
-        bcos::protocol::BlockFactory::Ptr _blockFactory, size_t _poolLimit,
-        size_t _notifierWorkerNum = 1)
+        bcos::protocol::BlockFactory::Ptr _blockFactory)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
         m_txFactory(_txFactory),
-        m_blockFactory(_blockFactory),
-        m_poolLimit(_poolLimit),
-        m_notifierWorkerNum(_notifierWorkerNum)
+        m_blockFactory(_blockFactory)
     {}
 
     virtual ~TxPoolConfig() {}

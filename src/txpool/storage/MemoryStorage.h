@@ -46,8 +46,8 @@ public:
 
     bcos::protocol::TransactionStatus submitTransaction(bytesPointer _txData,
         bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
-    bcos::protocol::TransactionStatus submitTransaction(bcos::protocol::Transaction::Ptr _tx,
-        bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
+    bcos::protocol::TransactionStatus submitTransaction(
+        bcos::protocol::Transaction::ConstPtr _tx) override;
 
     bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) override;
     void batchInsert(bcos::protocol::Transactions const& _txs) override;
@@ -59,7 +59,8 @@ public:
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override;
 
     bcos::protocol::ConstTransactionsPtr fetchTxs(
-        TxsHashSetPtr _missedTxs, TxsHashSetPtr _txsList) override;
+        bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) override;
+
     bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;
     bcos::protocol::ConstTransactionsPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
