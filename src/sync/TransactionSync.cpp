@@ -60,7 +60,7 @@ void TransactionSync::executeWorker()
     {
         maintainDownloadingTransactions();
     }
-    if (m_needMaintainTransactions && m_newTransactions && downloadTxsBufferEmpty())
+    if (m_config->existsInGroup() && m_newTransactions && downloadTxsBufferEmpty())
     {
         maintainTransactions();
     }
@@ -282,7 +282,7 @@ void TransactionSync::maintainDownloadingTransactions()
         return;
     }
     auto localBuffer = swapDownloadTxsBuffer();
-    if (!m_needMaintainTransactions)
+    if (!m_config->existsInGroup())
     {
         SYNC_LOG(DEBUG)
             << LOG_DESC(

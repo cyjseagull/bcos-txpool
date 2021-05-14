@@ -37,12 +37,14 @@ class TransactionSync : public TransactionSyncInterface,
 public:
     using Ptr = std::shared_ptr<TransactionSync>;
     explicit TransactionSync(TransactionSyncConfig::Ptr _config)
-      : Worker("sync", 0),
-        TransactionSyncInterface(_config),
+      : TransactionSyncInterface(_config),
+        Worker("sync", 0),
         m_downloadTxsBuffer(std::make_shared<TxsSyncMsgList>()),
         m_worker(std::make_shared<ThreadPool>("sync", 1)),
         m_txsRequester(std::make_shared<ThreadPool>("txsRequester", 1))
-    {}
+    {
+        m_config->txpoolStorage()->onReady([&]() { this->noteNewTransactions(); });
+    }
 
     ~TransactionSync() {}
 
@@ -99,6 +101,12 @@ protected:
     virtual bool importDownloadedTxs(
         bcos::crypto::NodeIDPtr _fromNode, bcos::protocol::Block::Ptr _txsBuffer);
 
+    void noteNewTransactions()
+    {
+        m_newTransactions = true;
+        m_signalled.notify_all();
+    }
+
 private:
     TxsSyncMsgListPtr m_downloadTxsBuffer;
     SharedMutex x_downloadTxsBuffer;
@@ -107,7 +115,6 @@ private:
 
     std::atomic_bool m_running = {false};
 
-    std::atomic_bool m_needMaintainTransactions = {true};
     std::atomic_bool m_newTransactions = {false};
 
     // signal to notify all thread to work

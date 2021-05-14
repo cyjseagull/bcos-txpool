@@ -23,6 +23,7 @@
 #include <bcos-framework/interfaces/protocol/Transaction.h>
 #include <bcos-framework/interfaces/txpool/TxPoolTypeDef.h>
 #include <bcos-framework/libprotocol/TransactionStatus.h>
+#include <bcos-framework/libutilities/CallbackCollectionHandler.h>
 
 namespace bcos
 {
@@ -70,6 +71,16 @@ public:
 
     virtual size_t size() const = 0;
     virtual void clear() = 0;
+
+    // Register a handler that will be called once there is a new transaction imported
+    template <class T>
+    bcos::Handler<> onReady(T const& _t)
+    {
+        return m_onReady.add(_t);
+    }
+
+protected:
+    bcos::CallbackCollectionHandler<> m_onReady;
 };
 }  // namespace txpool
 }  // namespace bcos

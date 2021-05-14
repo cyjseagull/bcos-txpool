@@ -87,9 +87,12 @@ protected:
 
     virtual void removeInvalidTxs();
 
+    virtual void preCommitTransaction(bcos::protocol::Transaction::ConstPtr _tx);
+
 private:
     TxPoolConfig::Ptr m_config;
     ThreadPool::Ptr m_notifier;
+    ThreadPool::Ptr m_worker;
 
     using TransactionQueue =
         tbb::concurrent_set<bcos::protocol::Transaction::ConstPtr, TransactionCompare>;

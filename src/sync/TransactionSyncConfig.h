@@ -38,15 +38,19 @@ public:
         bcos::txpool::TxPoolStorageInterface::Ptr _txpoolStorage,
         bcos::sync::TxsSyncMsgFactory::Ptr _msgFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
-        bcos::consensus::ConsensusNodeList const& _consensusNodes)
+        bcos::consensus::ConsensusNodeList const& _consensusNodes,
+        bcos::consensus::ConsensusNodeList const& _observerNodes)
       : m_nodeId(_nodeId),
         m_frontService(_frontService),
         m_txpoolStorage(_txpoolStorage),
         m_msgFactory(_msgFactory),
         m_blockFactory(_blockFactory),
         m_consensusNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_consensusNodes)),
-        m_connectedNodeList(std::make_shared<bcos::crypto::NodeIDSet>())
-    {}
+        m_observerNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_observerNodes)),
+        m_nodeList(std::make_shared<bcos::crypto::NodeIDSet>())
+    {
+        updateNodeList();
+    }
 
     virtual ~TransactionSyncConfig() {}
 
@@ -58,24 +62,6 @@ public:
 
     unsigned networkTimeout() const { return m_networkTimeout; }
     void setNetworkTimeout(unsigned _networkTimeout) { m_networkTimeout = _networkTimeout; }
-
-    // Note: copy here to remove multithreading issues
-    virtual bcos::consensus::ConsensusNodeList consensusNodeList()
-    {
-        ReadGuard l(x_consensusNodeList);
-        return *m_consensusNodeList;
-    }
-    virtual void setConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList)
-    {
-        WriteGuard l(x_consensusNodeList);
-        *m_consensusNodeList = _consensusNodeList;
-    }
-
-    virtual void setConsensusNodeList(bcos::consensus::ConsensusNodeList&& _consensusNodeList)
-    {
-        WriteGuard l(x_consensusNodeList);
-        *m_consensusNodeList = std::move(_consensusNodeList);
-    }
 
     // Note: copy here to remove multithreading issues
     virtual bcos::crypto::NodeIDSet connectedNodeList()
@@ -101,6 +87,63 @@ public:
     unsigned forwardPercent() const { return m_forwardPercent; }
     void setForwardPercent(unsigned _forwardPercent) { m_forwardPercent = _forwardPercent; }
 
+    // Note: copy here to remove multithreading issues
+    virtual bcos::consensus::ConsensusNodeList consensusNodeList()
+    {
+        ReadGuard l(x_consensusNodeList);
+        return *m_consensusNodeList;
+    }
+    virtual void setConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList)
+    {
+        {
+            WriteGuard l(x_consensusNodeList);
+            *m_consensusNodeList = _consensusNodeList;
+        }
+        updateNodeList();
+    }
+
+    virtual void setConsensusNodeList(bcos::consensus::ConsensusNodeList&& _consensusNodeList)
+    {
+        {
+            WriteGuard l(x_consensusNodeList);
+            *m_consensusNodeList = std::move(_consensusNodeList);
+        }
+        updateNodeList();
+    }
+
+    virtual void setObserverList(bcos::consensus::ConsensusNodeList const& _observerNodeList)
+    {
+        {
+            WriteGuard l(x_observerNodeList);
+            *m_observerNodeList = _observerNodeList;
+        }
+        updateNodeList();
+    }
+
+    bcos::consensus::ConsensusNodeList observerNodeList()
+    {
+        ReadGuard l(x_observerNodeList);
+        return *m_observerNodeList;
+    }
+
+    virtual bool existsInGroup()
+    {
+        ReadGuard l(x_nodeList);
+        return m_nodeList->count(m_nodeId);
+    }
+
+private:
+    void updateNodeList()
+    {
+        auto nodeList = consensusNodeList() + observerNodeList();
+        WriteGuard l(x_nodeList);
+        m_nodeList->clear();
+        for (auto node : nodeList)
+        {
+            m_nodeList->insert(node->nodeID());
+        }
+    }
+
 private:
     bcos::crypto::NodeIDPtr m_nodeId;
     bcos::front::FrontServiceInterface::Ptr m_frontService;
@@ -111,6 +154,12 @@ private:
     // TODO: fetch the consensusNodeList
     bcos::consensus::ConsensusNodeListPtr m_consensusNodeList;
     SharedMutex x_consensusNodeList;
+
+    bcos::consensus::ConsensusNodeListPtr m_observerNodeList;
+    SharedMutex x_observerNodeList;
+
+    bcos::crypto::NodeIDSetPtr m_nodeList;
+    SharedMutex x_nodeList;
 
     bcos::crypto::NodeIDSetPtr m_connectedNodeList;
     SharedMutex x_connectedNodeList;

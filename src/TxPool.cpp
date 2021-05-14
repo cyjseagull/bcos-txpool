@@ -26,6 +26,7 @@ using namespace bcos::txpool;
 using namespace bcos::protocol;
 using namespace bcos::crypto;
 using namespace bcos::sync;
+using namespace bcos::consensus;
 
 void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
 {
@@ -37,6 +38,20 @@ void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallbac
             auto txpool = self.lock();
             if (!txpool)
             {
+                return;
+            }
+            auto syncConfig = txpool->m_transactionSync->config();
+            auto config = txpool->m_config;
+            if (_txSubmitCallback && !syncConfig->existsInGroup())
+            {
+                // notify txResult
+                auto txResult =
+                    config->txResultFactory()->createTxSubmitResult(bcos::crypto::HashType(),
+                        (int32_t)TransactionStatus::RequestNotBelongToTheGroup);
+                auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
+                _txSubmitCallback(error, txResult);
+                TXPOOL_LOG(WARNING)
+                    << LOG_DESC("Do not send transactions to nodes that are not in the group");
                 return;
             }
             auto txpoolStorage = txpool->m_txpoolStorage;
@@ -97,6 +112,7 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock") << LOG_KV("totoalTxs", txsSize)
                       << LOG_KV("missedTxs", missedTxs->size());
 
+    // TODO: fetch missed transactions from the local ledger
     // fetch missed txs to the _generatedNodeID
     m_transactionSync->requestMissedTxs(_generatedNodeID, missedTxs, _onVerifyFinished);
 }
@@ -115,15 +131,42 @@ void TxPool::notifyConnectedNodes(
 }
 
 
-void TxPool::notifyConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList,
-    std::function<void(Error::Ptr)> _onRecvResponse)
+void TxPool::notifyConsensusNodeList(
+    ConsensusNodeList const& _consensusNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setConsensusNodeList(_consensusNodeList);
     _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
 }
 
-void TxPool::asyncStoreTxs(
-    bcos::crypto::HashType const&, bytesConstRef, std::function<void(Error::Ptr)>)
-{}
+void TxPool::notifyObserverNodeList(
+    ConsensusNodeList const& _observerNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
+{
+    m_transactionSync->config()->setObserverList(_observerNodeList);
+    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+}
 
-void TxPool::asyncFillBlock(bcos::protocol::Block::Ptr, std::function<void(Error)>) {}
+// Note: the transaction must be all hit in local txpool
+void TxPool::asyncFillBlock(
+    HashListPtr _txsHash, std::function<void(Error::Ptr, Block::Ptr)> _onBlockFilled)
+{
+    HashListPtr missedTxs = std::make_shared<HashList>();
+    auto txs = m_txpoolStorage->fetchTxs(*missedTxs, *_txsHash);
+    if (missedTxs->size() > 0)
+    {
+        TXPOOL_LOG(WARNING) << LOG_DESC("asyncFillBlock failed for missing some transactions")
+                            << LOG_KV("missedTxsSize", missedTxs->size());
+        _onBlockFilled(
+            std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),
+            nullptr);
+        return;
+    }
+    TXPOOL_LOG(DEBUG) << LOG_DESC("asyncFillBlock: hit all transactions")
+                      << LOG_KV("size", txs->size());
+    // TODO: the Block provide method to batch fetch txsHash, and batch set transactions
+    auto block = m_config->blockFactory()->createBlock();
+    for (size_t i = 0; i < txs->size(); i++)
+    {
+        block->setTransaction(i, std::const_pointer_cast<Transaction>((*txs)[i]));
+    }
+    _onBlockFilled(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), block);
+}

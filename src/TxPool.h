@@ -57,12 +57,6 @@ public:
     void asyncVerifyBlock(bcos::crypto::PublicPtr _generatedNodeID, bytesConstRef const& _block,
         std::function<void(Error::Ptr, bool)> _onVerifyFinished) override;
 
-    void asyncStoreTxs(bcos::crypto::HashType const& _proposalHash, bytesConstRef _txsToStore,
-        std::function<void(Error::Ptr)> _onTxsStored) override;
-
-    void asyncFillBlock(
-        bcos::protocol::Block::Ptr _block, std::function<void(Error)> _onBlockFilled) override;
-
     void sendTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesPointer _data, std::function<void(bytesConstRef _respData)> _sendResponse) override;
 
@@ -70,6 +64,12 @@ public:
         std::function<void(Error::Ptr)> _onRecvResponse) override;
 
     void notifyConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList,
+        std::function<void(Error::Ptr)> _onRecvResponse) override;
+
+    void asyncFillBlock(bcos::crypto::HashListPtr _txsHash,
+        std::function<void(Error::Ptr, bcos::protocol::Block::Ptr)> _onBlockFilled) override;
+
+    void notifyObserverNodeList(bcos::consensus::ConsensusNodeList const& _observerNodeList,
         std::function<void(Error::Ptr)> _onRecvResponse) override;
 
 private:

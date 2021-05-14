@@ -30,6 +30,7 @@ using namespace bcos::protocol;
 MemoryStorage::MemoryStorage(TxPoolConfig::Ptr _config) : m_config(_config)
 {
     m_notifier = std::make_shared<ThreadPool>("txNotifier", m_config->notifierWorkerNum());
+    m_worker = std::make_shared<ThreadPool>("txpoolWorker", 1);
 }
 
 TransactionStatus MemoryStorage::submitTransaction(
@@ -102,7 +103,45 @@ TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
     }
     auto txIterator = m_txsQueue.emplace(_tx).first;
     m_txsTable[txHash] = txIterator;
+    m_onReady();
+    preCommitTransaction(_tx);
     return TransactionStatus::None;
+}
+
+void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _tx)
+{
+    auto self = std::weak_ptr<MemoryStorage>(shared_from_this());
+    m_worker->enqueue([self, _tx]() {
+        try
+        {
+            auto txpoolStorage = self.lock();
+            if (!txpoolStorage)
+            {
+                return;
+            }
+            auto encodedData = std::make_shared<bytes>();
+            _tx->encode(*encodedData);
+            txpoolStorage->m_config->ledger()->asyncPreStoreTransaction(
+                encodedData, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
+                    if (_error->errorCode() == CommonError::SUCCESS)
+                    {
+                        return;
+                    }
+                    // Note: Will it cause an avalanche here?
+                    txpoolStorage->preCommitTransaction(_tx);
+                    TXPOOL_LOG(WARNING) << LOG_DESC("asyncPreStoreTransaction failed")
+                                        << LOG_KV("errorCode", _error->errorCode())
+                                        << LOG_KV("errorMsg", _error->errorMessage())
+                                        << LOG_KV("tx", _tx->hash().abridged());
+                });
+        }
+        catch (std::exception const& e)
+        {
+            TXPOOL_LOG(WARNING) << LOG_DESC("preCommitTransaction exception")
+                                << LOG_KV("error", boost::diagnostic_information(e))
+                                << LOG_KV("tx", _tx->hash().abridged());
+        }
+    });
 }
 
 void MemoryStorage::batchInsert(Transactions const& _txs)
