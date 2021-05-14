@@ -48,7 +48,10 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     // check signature
     try
     {
-        _tx->verify();
+        if (!_tx->verify())
+        {
+            throw bcos::Exception("Hash verify failed!");
+        }
     }
     catch (std::exception const& e)
     {

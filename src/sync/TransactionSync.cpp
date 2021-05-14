@@ -319,7 +319,9 @@ bool TransactionSync::importDownloadedTxs(
                 }
                 try
                 {
-                    tx->verify();
+                    if(!tx->verify()) {
+                        throw bcos::Exception("Hash verify failed!");
+                    }
                 }
                 catch (std::exception const& e)
                 {

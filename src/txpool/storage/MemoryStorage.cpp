@@ -119,10 +119,10 @@ void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _
             {
                 return;
             }
-            auto encodedData = std::make_shared<bytes>();
-            _tx->encode(*encodedData);
+            auto encodedData = _tx->encode(false);
+            auto encodedDataPtr = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
             txpoolStorage->m_config->ledger()->asyncPreStoreTransaction(
-                encodedData, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
+                encodedDataPtr, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
                     if (_error->errorCode() == CommonError::SUCCESS)
                     {
                         return;
