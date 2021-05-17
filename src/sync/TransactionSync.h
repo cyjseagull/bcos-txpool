@@ -74,9 +74,17 @@ protected:
 
     virtual void onReceiveTxsRequest(
         TxsSyncMsgInterface::Ptr _txsRequest, SendResponseCallback _sendResponse);
+
+    // functions called by requestMissedTxs
     virtual void verifyFetchedTxs(Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesConstRef _data, bcos::crypto::HashListPtr _missedTxs,
         VerifyResponseCallback _onVerifyFinished);
+    virtual void requestMissedTxsFromPeer(bcos::crypto::PublicPtr _generatedNodeID,
+        bcos::crypto::HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished);
+    virtual size_t onGetMissedTxsFromLedger(std::set<bcos::crypto::HashType>& _missedTxs,
+        Error::Ptr _error, bcos::protocol::TransactionsPtr _fetchedTxs,
+        VerifyResponseCallback _onVerifyFinished);
+
 
     virtual bool downloadTxsBufferEmpty()
     {
@@ -100,6 +108,9 @@ protected:
     }
     virtual bool importDownloadedTxs(
         bcos::crypto::NodeIDPtr _fromNode, bcos::protocol::Block::Ptr _txsBuffer);
+
+    virtual bool importDownloadedTxs(
+        bcos::crypto::NodeIDPtr _fromNode, bcos::protocol::TransactionsPtr _txs);
 
     void noteNewTransactions()
     {

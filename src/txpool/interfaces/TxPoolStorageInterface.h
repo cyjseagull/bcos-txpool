@@ -39,7 +39,8 @@ public:
     virtual bcos::protocol::TransactionStatus submitTransaction(
         bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) = 0;
     virtual bcos::protocol::TransactionStatus submitTransaction(
-        bcos::protocol::Transaction::ConstPtr _tx) = 0;
+        bcos::protocol::Transaction::Ptr _tx,
+        bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) = 0;
 
     virtual bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) = 0;
     virtual void batchInsert(bcos::protocol::Transactions const& _txs) = 0;
@@ -61,7 +62,7 @@ public:
      * @return List of new transactions
      */
     virtual bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) = 0;
-    virtual bcos::protocol::ConstTransactionsPtr batchFetchTxs(
+    virtual bcos::crypto::HashListPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) = 0;
 
     virtual bool exist(bcos::crypto::HashType const& _txHash) = 0;
@@ -78,6 +79,9 @@ public:
     {
         return m_onReady.add(_t);
     }
+
+    virtual void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) = 0;
+    virtual size_t unSealedTxsSize() = 0;
 
 protected:
     bcos::CallbackCollectionHandler<> m_onReady;

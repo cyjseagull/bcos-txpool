@@ -27,6 +27,7 @@
 #include <bcos-framework/interfaces/protocol/BlockFactory.h>
 #include <bcos-framework/interfaces/protocol/TransactionFactory.h>
 #include <bcos-framework/interfaces/protocol/TransactionSubmitResultFactory.h>
+#include <bcos-framework/interfaces/sealer/SealerInterface.h>
 namespace bcos
 {
 namespace txpool
@@ -39,12 +40,14 @@ public:
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::TransactionFactory::Ptr _txFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
-        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger)
+        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
+        bcos::sealer::SealerInterface::Ptr _sealer)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
         m_txFactory(_txFactory),
         m_blockFactory(_blockFactory),
-        m_ledger(_ledger)
+        m_ledger(_ledger),
+        m_sealer(_sealer)
     {}
 
     virtual ~TxPoolConfig() {}
@@ -87,12 +90,15 @@ public:
 
     std::shared_ptr<bcos::ledger::LedgerInterface> ledger() { return m_ledger; }
 
+    bcos::sealer::SealerInterface::Ptr sealer() { return m_sealer; }
+
 private:
     TxValidatorInterface::Ptr m_txValidator;
     bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
     bcos::protocol::TransactionFactory::Ptr m_txFactory;
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
+    bcos::sealer::SealerInterface::Ptr m_sealer;
     // TODO: create the nonceChecker
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
     NonceCheckerInterface::Ptr m_ledgerNonceChecker;

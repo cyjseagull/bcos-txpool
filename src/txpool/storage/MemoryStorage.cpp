@@ -39,11 +39,7 @@ TransactionStatus MemoryStorage::submitTransaction(
     try
     {
         auto tx = m_config->txFactory()->createTransaction(ref(*_txData), false);
-        if (_txSubmitCallback)
-        {
-            tx->setSubmitCallback(_txSubmitCallback);
-        }
-        return submitTransaction(tx);
+        return submitTransaction(tx, _txSubmitCallback);
     }
     catch (std::exception const& e)
     {
@@ -54,10 +50,16 @@ TransactionStatus MemoryStorage::submitTransaction(
     }
 }
 
-TransactionStatus MemoryStorage::submitTransaction(Transaction::ConstPtr _tx)
+TransactionStatus MemoryStorage::submitTransaction(
+    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
 {
+    if (_txSubmitCallback)
+    {
+        _tx->setSubmitCallback(_txSubmitCallback);
+    }
     // verify the transaction
     auto result = m_config->txValidator()->verify(_tx);
+    _tx->setImportTime(utcTime());
     if (result == TransactionStatus::None)
     {
         result = insert(_tx);
@@ -120,9 +122,8 @@ void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _
                 return;
             }
             auto encodedData = _tx->encode(false);
-            auto encodedDataPtr = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
             txpoolStorage->m_config->ledger()->asyncPreStoreTransaction(
-                encodedDataPtr, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
+                encodedData, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
                     if (_error->errorCode() == CommonError::SUCCESS)
                     {
                         return;
@@ -287,11 +288,11 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
     return fetchedTxs;
 }
 
-ConstTransactionsPtr MemoryStorage::batchFetchTxs(
+HashListPtr MemoryStorage::batchFetchTxs(
     size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
     UpgradableGuard l(x_txpoolMutex);
-    auto fetchedTxs = std::make_shared<ConstTransactions>();
+    auto fetchedTxs = std::make_shared<HashList>();
     for (auto tx : m_txsQueue)
     {
         if (_avoidDuplicate && tx->sealed())
@@ -318,13 +319,16 @@ ConstTransactionsPtr MemoryStorage::batchFetchTxs(
         {
             continue;
         }
-        fetchedTxs->emplace_back(tx);
+        fetchedTxs->emplace_back(tx->hash());
         tx->setSealed(true);
+        m_sealedTxsSize++;
+
         if (fetchedTxs->size() >= _txsLimit)
         {
             break;
         }
     }
+    notifyUnsealedTxsSize();
     UpgradeGuard ul(l);
     removeInvalidTxs();
     return fetchedTxs;
@@ -374,12 +378,6 @@ void MemoryStorage::removeInvalidTxs()
     });
 }
 
-size_t MemoryStorage::size() const
-{
-    ReadGuard l(x_txpoolMutex);
-    return m_txsTable.size();
-}
-
 void MemoryStorage::clear()
 {
     WriteGuard l(x_txpoolMutex);
@@ -421,4 +419,61 @@ HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeID
         m_missedTxs.clear();
     }
     return unknownTxsList;
+}
+
+void MemoryStorage::batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag)
+{
+    ReadGuard l(x_txpoolMutex);
+    for (auto txHash : _txsHashList)
+    {
+        if (!m_txsTable.count(txHash))
+        {
+            TXPOOL_LOG(WARNING) << LOG_DESC("batchMarkTxs: missing transaction")
+                                << LOG_KV("tx", txHash.abridged()) << LOG_KV("sealFlag", _sealFlag);
+            continue;
+        }
+        auto tx = *(m_txsTable[txHash]);
+        tx->setSealed(_sealFlag);
+        if (_sealFlag && !tx->sealed())
+        {
+            m_sealedTxsSize++;
+        }
+        if (!_sealFlag && tx->sealed())
+        {
+            m_sealedTxsSize--;
+        }
+    }
+    notifyUnsealedTxsSize();
+}
+
+size_t MemoryStorage::size() const
+{
+    ReadGuard l(x_txpoolMutex);
+    return m_txsTable.size();
+}
+
+size_t MemoryStorage::unSealedTxsSize()
+{
+    ReadGuard l(x_txpoolMutex);
+    if (m_txsTable.size() < m_sealedTxsSize)
+    {
+        m_sealedTxsSize = m_txsTable.size();
+        return 0;
+    }
+    return (m_txsTable.size() - m_sealedTxsSize);
+}
+
+void MemoryStorage::notifyUnsealedTxsSize()
+{
+    auto unsealedTxsSize = unSealedTxsSize();
+    m_config->sealer()->asyncNoteUnSealedTxsSize(unsealedTxsSize, [this](Error::Ptr _error) {
+        if (_error->errorCode() == CommonError::SUCCESS)
+        {
+            return;
+        }
+        TXPOOL_LOG(WARNING) << LOG_DESC("notifyUnsealedTxsSize failed, retry again")
+                            << LOG_KV("errorCode", _error->errorCode())
+                            << LOG_KV("errorMsg", _error->errorMessage());
+        this->notifyUnsealedTxsSize();
+    });
 }

@@ -46,8 +46,8 @@ public:
 
     bcos::protocol::TransactionStatus submitTransaction(bytesPointer _txData,
         bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
-    bcos::protocol::TransactionStatus submitTransaction(
-        bcos::protocol::Transaction::ConstPtr _tx) override;
+    bcos::protocol::TransactionStatus submitTransaction(bcos::protocol::Transaction::Ptr _tx,
+        bcos::protocol::TxSubmitCallback _txSubmitCallback = nullptr) override;
 
     bcos::protocol::TransactionStatus insert(bcos::protocol::Transaction::ConstPtr _tx) override;
     void batchInsert(bcos::protocol::Transactions const& _txs) override;
@@ -62,15 +62,18 @@ public:
         bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) override;
 
     bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;
-    bcos::protocol::ConstTransactionsPtr batchFetchTxs(
+    bcos::crypto::HashListPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
     bool exist(bcos::crypto::HashType const& _txHash) override { return m_txsTable.count(_txHash); }
     size_t size() const override;
+    size_t unSealedTxsSize() override;
     void clear() override;
 
     bcos::crypto::HashListPtr filterUnknownTxs(
         bcos::crypto::HashList const& _txsHashList, bcos::crypto::NodeIDPtr _peer) override;
+
+    void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) override;
 
 protected:
     virtual bcos::protocol::Transaction::ConstPtr removeWithoutLock(
@@ -88,6 +91,8 @@ protected:
     virtual void removeInvalidTxs();
 
     virtual void preCommitTransaction(bcos::protocol::Transaction::ConstPtr _tx);
+
+    virtual void notifyUnsealedTxsSize();
 
 private:
     TxPoolConfig::Ptr m_config;
@@ -110,6 +115,7 @@ private:
 
     tbb::concurrent_set<bcos::crypto::HashType> m_missedTxs;
     mutable SharedMutex x_missedTxs;
+    std::atomic<size_t> m_sealedTxsSize;
 };
 }  // namespace txpool
 }  // namespace bcos

@@ -23,6 +23,7 @@
 #include <bcos-framework/interfaces/consensus/ConsensusNodeInterface.h>
 #include <bcos-framework/interfaces/crypto/KeyInterface.h>
 #include <bcos-framework/interfaces/front/FrontServiceInterface.h>
+#include <bcos-framework/interfaces/ledger/LedgerInterface.h>
 #include <bcos-framework/interfaces/protocol/BlockFactory.h>
 #include <bcos-framework/libsync/interfaces/TxsSyncMsgFactory.h>
 namespace bcos
@@ -38,6 +39,7 @@ public:
         bcos::txpool::TxPoolStorageInterface::Ptr _txpoolStorage,
         bcos::sync::TxsSyncMsgFactory::Ptr _msgFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
+        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
         bcos::consensus::ConsensusNodeList const& _consensusNodes,
         bcos::consensus::ConsensusNodeList const& _observerNodes)
       : m_nodeId(_nodeId),
@@ -45,6 +47,7 @@ public:
         m_txpoolStorage(_txpoolStorage),
         m_msgFactory(_msgFactory),
         m_blockFactory(_blockFactory),
+        m_ledger(_ledger),
         m_consensusNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_consensusNodes)),
         m_observerNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_observerNodes)),
         m_nodeList(std::make_shared<bcos::crypto::NodeIDSet>())
@@ -131,6 +134,7 @@ public:
         ReadGuard l(x_nodeList);
         return m_nodeList->count(m_nodeId);
     }
+    std::shared_ptr<bcos::ledger::LedgerInterface> ledger() { return m_ledger; }
 
 private:
     void updateNodeList()
@@ -150,8 +154,9 @@ private:
     bcos::txpool::TxPoolStorageInterface::Ptr m_txpoolStorage;
     bcos::sync::TxsSyncMsgFactory::Ptr m_msgFactory;
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
+    std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
 
-    // TODO: fetch the consensusNodeList
+    // TODO: fetch the consensusNodeList through initializer
     bcos::consensus::ConsensusNodeListPtr m_consensusNodeList;
     SharedMutex x_consensusNodeList;
 

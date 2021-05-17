@@ -43,8 +43,7 @@ public:
         bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback) override;
 
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
-        std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)> _sealCallback)
-        override;
+        std::function<void(Error::Ptr, bcos::crypto::HashListPtr)> _sealCallback) override;
 
     void asyncFetchNewTxs(size_t _txsLimit,
         std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)> _onReceiveNewTxs)
@@ -71,6 +70,40 @@ public:
 
     void notifyObserverNodeList(bcos::consensus::ConsensusNodeList const& _observerNodeList,
         std::function<void(Error::Ptr)> _onRecvResponse) override;
+
+    void asyncMarkTxs(bcos::crypto::HashListPtr _txsHash, bool _sealedFlag,
+        std::function<void(Error::Ptr)> _onRecvResponse) override;
+
+protected:
+    virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);
+
+    template <typename T>
+    void asyncSubmitTransaction(T _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback)
+    {
+        // verify and try to submit the valid transaction
+        auto self = std::weak_ptr<TxPool>(shared_from_this());
+        m_worker->enqueue([self, _txData, _txSubmitCallback]() {
+            try
+            {
+                auto txpool = self.lock();
+                if (!txpool)
+                {
+                    return;
+                }
+                if (!txpool->checkExistsInGroup(_txSubmitCallback))
+                {
+                    return;
+                }
+                auto txpoolStorage = txpool->m_txpoolStorage;
+                txpoolStorage->submitTransaction(_txData, _txSubmitCallback);
+            }
+            catch (std::exception const& e)
+            {
+                TXPOOL_LOG(WARNING) << LOG_DESC("asyncSubmit excepiton")
+                                    << LOG_KV("errorInfo", boost::diagnostic_information(e));
+            }
+        });
+    }
 
 private:
     TxPoolConfig::Ptr m_config;

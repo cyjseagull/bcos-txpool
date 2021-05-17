@@ -26,7 +26,6 @@ using namespace bcos::txpool;
 
 TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
 {
-    // TODO: check the node in belongs to the group or not
     if (_tx->invalid())
     {
         return TransactionStatus::InvalidSignature;
@@ -48,10 +47,7 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     // check signature
     try
     {
-        if (!_tx->verify())
-        {
-            throw bcos::Exception("Hash verify failed!");
-        }
+        _tx->verify();
     }
     catch (std::exception const& e)
     {
