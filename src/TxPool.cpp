@@ -111,10 +111,12 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     m_transactionSync->requestMissedTxs(_generatedNodeID, missedTxs, onVerifyFinishedWrapper);
 }
 
-void TxPool::sendTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, bytesPointer _data,
-    std::function<void(bytesConstRef _respData)> _sendResponse)
+void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, bytesPointer _data,
+    std::function<void(bytesConstRef _respData)> _sendResponse,
+    std::function<void(Error::Ptr _error)> _onRecv)
 {
     m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
+    _onRecv(std::make_shared<Error>(CommonError::SUCCESS, "success"));
 }
 
 void TxPool::notifyConnectedNodes(
@@ -140,8 +142,8 @@ void TxPool::notifyObserverNodeList(
 }
 
 // Note: the transaction must be all hit in local txpool
-void TxPool::asyncFillBlock(
-    HashListPtr _txsHash, std::function<void(Error::Ptr, Block::Ptr)> _onBlockFilled)
+void TxPool::asyncFillBlock(HashListPtr _txsHash,
+    std::function<void(Error::Ptr, bcos::protocol::TransactionsPtr)> _onBlockFilled)
 {
     HashListPtr missedTxs = std::make_shared<HashList>();
     auto txs = m_txpoolStorage->fetchTxs(*missedTxs, *_txsHash);
@@ -156,12 +158,7 @@ void TxPool::asyncFillBlock(
     }
     TXPOOL_LOG(DEBUG) << LOG_DESC("asyncFillBlock: hit all transactions")
                       << LOG_KV("size", txs->size());
-    auto block = m_config->blockFactory()->createBlock();
-    for (size_t i = 0; i < txs->size(); i++)
-    {
-        block->setTransaction(i, std::const_pointer_cast<Transaction>((*txs)[i]));
-    }
-    _onBlockFilled(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), block);
+    _onBlockFilled(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), txs);
 }
 
 

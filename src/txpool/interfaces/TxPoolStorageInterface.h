@@ -52,7 +52,7 @@ public:
         bcos::protocol::TransactionSubmitResults const& _txsResult) = 0;
 
     // Note: the transactions may be missing from the transaction pool
-    virtual bcos::protocol::ConstTransactionsPtr fetchTxs(
+    virtual bcos::protocol::TransactionsPtr fetchTxs(
         bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) = 0;
 
     /**

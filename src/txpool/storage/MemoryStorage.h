@@ -58,7 +58,7 @@ public:
     bcos::protocol::Transaction::ConstPtr removeSubmittedTx(
         bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override;
 
-    bcos::protocol::ConstTransactionsPtr fetchTxs(
+    bcos::protocol::TransactionsPtr fetchTxs(
         bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) override;
 
     bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;

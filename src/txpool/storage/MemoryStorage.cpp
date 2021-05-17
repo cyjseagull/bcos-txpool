@@ -250,10 +250,10 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
     m_config->txPoolNonceChecker()->batchRemove(*nonceList);
 }
 
-ConstTransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList const& _txs)
+TransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList const& _txs)
 {
     ReadGuard l(x_txpoolMutex);
-    auto fetchedTxs = std::make_shared<ConstTransactions>();
+    auto fetchedTxs = std::make_shared<Transactions>();
     _missedTxs.clear();
     for (auto const& hash : _txs)
     {
@@ -263,7 +263,7 @@ ConstTransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList cons
             continue;
         }
         auto tx = *(m_txsTable[hash]);
-        fetchedTxs->emplace_back(tx);
+        fetchedTxs->emplace_back(std::const_pointer_cast<Transaction>(tx));
     }
     return fetchedTxs;
 }
