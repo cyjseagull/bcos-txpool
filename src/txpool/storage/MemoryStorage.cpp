@@ -122,8 +122,13 @@ void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _
                 return;
             }
             auto encodedData = _tx->encode(false);
-            txpoolStorage->m_config->ledger()->asyncPreStoreTransaction(
-                encodedData, _tx->hash(), [txpoolStorage, _tx](Error::Ptr _error) {
+            auto txsToStore = std::make_shared<std::vector<bytesPointer>>();
+            txsToStore->emplace_back(
+                std::make_shared<bytes>(encodedData.begin(), encodedData.end()));
+            auto txsHash = std::make_shared<HashList>();
+            txsHash->emplace_back(_tx->hash());
+            txpoolStorage->m_config->ledger()->asyncStoreTransactions(
+                txsToStore, txsHash, [txpoolStorage, _tx](Error::Ptr _error) {
                     if (_error->errorCode() == CommonError::SUCCESS)
                     {
                         return;
