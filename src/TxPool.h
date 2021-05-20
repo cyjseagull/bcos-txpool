@@ -37,7 +37,10 @@ public:
         m_worker = std::make_shared<ThreadPool>("submitter", _config->verifyWorkerNum());
     }
 
-    ~TxPool() override {}
+    ~TxPool() override { stop(); }
+
+    void start() override;
+    void stop() override;
 
     void asyncSubmit(
         bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback) override;

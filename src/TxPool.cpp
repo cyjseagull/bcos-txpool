@@ -28,6 +28,16 @@ using namespace bcos::crypto;
 using namespace bcos::sync;
 using namespace bcos::consensus;
 
+void TxPool::start()
+{
+    m_transactionSync->start();
+}
+
+void TxPool::stop()
+{
+    m_transactionSync->stop();
+}
+
 void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
 {
     asyncSubmitTransaction(_txData, _txSubmitCallback);

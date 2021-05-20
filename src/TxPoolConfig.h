@@ -25,7 +25,6 @@
 #include "txpool/interfaces/TxValidatorInterface.h"
 #include <bcos-framework/interfaces/ledger/LedgerInterface.h>
 #include <bcos-framework/interfaces/protocol/BlockFactory.h>
-#include <bcos-framework/interfaces/protocol/TransactionFactory.h>
 #include <bcos-framework/interfaces/protocol/TransactionSubmitResultFactory.h>
 #include <bcos-framework/interfaces/sealer/SealerInterface.h>
 namespace bcos
@@ -38,13 +37,11 @@ public:
     using Ptr = std::shared_ptr<TxPoolConfig>;
     TxPoolConfig(TxValidatorInterface::Ptr _txValidator,
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
-        bcos::protocol::TransactionFactory::Ptr _txFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
         std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
         bcos::sealer::SealerInterface::Ptr _sealer)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
-        m_txFactory(_txFactory),
         m_blockFactory(_blockFactory),
         m_ledger(_ledger),
         m_sealer(_sealer)
@@ -82,12 +79,10 @@ public:
         m_blockFactory = _blockFactory;
     }
 
-    bcos::protocol::TransactionFactory::Ptr txFactory() { return m_txFactory; }
-    void setTxFactory(bcos::protocol::TransactionFactory::Ptr _txFactory)
+    bcos::protocol::TransactionFactory::Ptr txFactory()
     {
-        m_txFactory = _txFactory;
+        return m_blockFactory->transactionFactory();
     }
-
     std::shared_ptr<bcos::ledger::LedgerInterface> ledger() { return m_ledger; }
 
     bcos::sealer::SealerInterface::Ptr sealer() { return m_sealer; }
@@ -95,11 +90,9 @@ public:
 private:
     TxValidatorInterface::Ptr m_txValidator;
     bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
-    bcos::protocol::TransactionFactory::Ptr m_txFactory;
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
     bcos::sealer::SealerInterface::Ptr m_sealer;
-    // TODO: create the nonceChecker
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
     NonceCheckerInterface::Ptr m_ledgerNonceChecker;
     size_t m_poolLimit = 15000;

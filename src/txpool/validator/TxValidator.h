@@ -30,15 +30,20 @@ class TxValidator : public TxValidatorInterface
 public:
     using Ptr = std::shared_ptr<TxValidator>;
     TxValidator(NonceCheckerInterface::Ptr _txPoolNonceChecker,
-        NonceCheckerInterface::Ptr _ledgerNonceChecker, bcos::crypto::CryptoSuite::Ptr _cryptoSuite,
-        std::string const& _groupId, std::string const& _chainId)
+        bcos::crypto::CryptoSuite::Ptr _cryptoSuite, std::string const& _groupId,
+        std::string const& _chainId)
       : m_txPoolNonceChecker(_txPoolNonceChecker),
-        m_ledgerNonceChecker(_ledgerNonceChecker),
         m_cryptoSuite(_cryptoSuite),
         m_groupId(_groupId),
         m_chainId(_chainId)
     {}
     ~TxValidator() override {}
+
+    void setLedgerNonceChecker(NonceCheckerInterface::Ptr _ledgerNonceChecker)
+    {
+        m_ledgerNonceChecker = _ledgerNonceChecker;
+    }
+
     bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::ConstPtr _tx) override;
     bcos::protocol::TransactionStatus duplicateTx(
         bcos::protocol::Transaction::ConstPtr _tx) override;

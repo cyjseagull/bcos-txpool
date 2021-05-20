@@ -39,21 +39,17 @@ public:
         bcos::txpool::TxPoolStorageInterface::Ptr _txpoolStorage,
         bcos::sync::TxsSyncMsgFactory::Ptr _msgFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
-        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
-        bcos::consensus::ConsensusNodeList const& _consensusNodes,
-        bcos::consensus::ConsensusNodeList const& _observerNodes)
+        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger)
       : m_nodeId(_nodeId),
         m_frontService(_frontService),
         m_txpoolStorage(_txpoolStorage),
         m_msgFactory(_msgFactory),
         m_blockFactory(_blockFactory),
         m_ledger(_ledger),
-        m_consensusNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_consensusNodes)),
-        m_observerNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>(_observerNodes)),
+        m_consensusNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>()),
+        m_observerNodeList(std::make_shared<bcos::consensus::ConsensusNodeList>()),
         m_nodeList(std::make_shared<bcos::crypto::NodeIDSet>())
-    {
-        updateNodeList();
-    }
+    {}
 
     virtual ~TransactionSyncConfig() {}
 
@@ -156,7 +152,6 @@ private:
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
 
-    // TODO: fetch the consensusNodeList through initializer
     bcos::consensus::ConsensusNodeListPtr m_consensusNodeList;
     SharedMutex x_consensusNodeList;
 
