@@ -33,13 +33,12 @@ public:
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
         bcos::front::FrontServiceInterface::Ptr _frontService,
-        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
-        bcos::sealer::SealerInterface::Ptr _sealer, std::string const& _groupId,
+        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger, std::string const& _groupId,
         std::string const& _chainId, int64_t _blockLimit);
 
     virtual ~TxPoolFactory() {}
 
-    virtual void init();
+    virtual void init(bcos::sealer::SealerInterface::Ptr _sealer);
 
     TxPoolInterface::Ptr txpool() { return m_txpool; }
 

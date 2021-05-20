@@ -38,8 +38,8 @@ using namespace bcos::protocol;
 TxPoolFactory::TxPoolFactory(NodeIDPtr _nodeId, CryptoSuite::Ptr _cryptoSuite,
     TransactionSubmitResultFactory::Ptr _txResultFactory, BlockFactory::Ptr _blockFactory,
     bcos::front::FrontServiceInterface::Ptr _frontService,
-    bcos::ledger::LedgerInterface::Ptr _ledger, bcos::sealer::SealerInterface::Ptr _sealer,
-    std::string const& _groupId, std::string const& _chainId, int64_t _blockLimit)
+    bcos::ledger::LedgerInterface::Ptr _ledger, std::string const& _groupId,
+    std::string const& _chainId, int64_t _blockLimit)
   : m_blockLimit(_blockLimit)
 {
     TXPOOL_LOG(INFO) << LOG_DESC("create transaction validator");
@@ -48,8 +48,8 @@ TxPoolFactory::TxPoolFactory(NodeIDPtr _nodeId, CryptoSuite::Ptr _cryptoSuite,
         std::make_shared<TxValidator>(txpoolNonceChecker, _cryptoSuite, _groupId, _chainId);
 
     TXPOOL_LOG(INFO) << LOG_DESC("create transaction config");
-    m_txpoolConfig = std::make_shared<TxPoolConfig>(
-        validator, _txResultFactory, _blockFactory, _ledger, _sealer);
+    m_txpoolConfig =
+        std::make_shared<TxPoolConfig>(validator, _txResultFactory, _blockFactory, _ledger);
     TXPOOL_LOG(INFO) << LOG_DESC("create transaction storage");
     auto txpoolStorage = std::make_shared<MemoryStorage>(m_txpoolConfig);
 
@@ -65,8 +65,9 @@ TxPoolFactory::TxPoolFactory(NodeIDPtr _nodeId, CryptoSuite::Ptr _cryptoSuite,
     TXPOOL_LOG(INFO) << LOG_DESC("create txpool success");
 }
 
-void TxPoolFactory::init()
+void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
 {
+    m_txpoolConfig->setSealer(_sealer);
     auto ledgerConfigFetcher = std::make_shared<LedgerConfigFetcher>(m_txpoolConfig->ledger());
     TXPOOL_LOG(INFO) << LOG_DESC("fetch LedgerConfig information");
     ledgerConfigFetcher->fetchBlockNumberAndHash();
