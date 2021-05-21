@@ -19,7 +19,6 @@
  * @date 2021-05-07
  */
 #include "MemoryStorage.h"
-#include <bcos-framework/interfaces/protocol/CommonError.h>
 #include <tbb/parallel_invoke.h>
 
 using namespace bcos;
@@ -85,8 +84,7 @@ void MemoryStorage::notifyInvalidReceipt(
     }
     // notify txResult
     auto txResult = m_config->txResultFactory()->createTxSubmitResult(_txHash, (int32_t)_status);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _txSubmitCallback(error, txResult);
+    _txSubmitCallback(nullptr, txResult);
     TXPOOL_LOG(WARNING) << LOG_DESC("notifyReceipt: reject invalid tx")
                         << LOG_KV("tx", _txHash.abridged()) << LOG_KV("exception", _status);
 }
@@ -129,7 +127,7 @@ void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _
             txsHash->emplace_back(_tx->hash());
             txpoolStorage->m_config->ledger()->asyncStoreTransactions(
                 txsToStore, txsHash, [txpoolStorage, _tx](Error::Ptr _error) {
-                    if (_error->errorCode() == CommonError::SUCCESS)
+                    if (_error == nullptr)
                     {
                         return;
                     }
@@ -222,8 +220,7 @@ void MemoryStorage::notifyTxResult(
             {
                 return;
             }
-            auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-            txSubmitCallback(error, _txSubmitResult);
+            txSubmitCallback(nullptr, _txSubmitResult);
             // TODO: remove this log
             TXPOOL_LOG(TRACE) << LOG_DESC("notify submit result")
                               << LOG_KV("tx", _tx->hash().abridged());
@@ -472,7 +469,7 @@ void MemoryStorage::notifyUnsealedTxsSize()
 {
     auto unsealedTxsSize = unSealedTxsSize();
     m_config->sealer()->asyncNoteUnSealedTxsSize(unsealedTxsSize, [this](Error::Ptr _error) {
-        if (_error->errorCode() == CommonError::SUCCESS)
+        if (_error == nullptr)
         {
             return;
         }

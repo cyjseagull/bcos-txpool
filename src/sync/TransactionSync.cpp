@@ -78,7 +78,7 @@ void TransactionSync::onRecvSyncMessage(
 {
     try
     {
-        if (_error->errorCode() != CommonError::SUCCESS)
+        if (_error != nullptr)
         {
             SYNC_LOG(WARNING) << LOG_DESC("onRecvSyncMessage error")
                               << LOG_KV("errorCode", _error->errorCode())
@@ -211,7 +211,7 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
 size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs, Error::Ptr _error,
     TransactionsPtr _fetchedTxs, VerifyResponseCallback _onVerifyFinished)
 {
-    if (_error->errorCode() != CommonError::SUCCESS)
+    if (_error != nullptr)
     {
         SYNC_LOG(WARNING) << LOG_DESC("onGetMissedTxsFromLedger: get error response")
                           << LOG_KV("errorCode", _error->errorCode())
@@ -242,7 +242,7 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
     if (_missedTxs.size() == 0)
     {
         SYNC_LOG(DEBUG) << LOG_DESC("onGetMissedTxsFromLedger: hit all transactions");
-        _onVerifyFinished(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), true);
+        _onVerifyFinished(nullptr, true);
     }
     return _missedTxs.size();
 }
@@ -252,7 +252,7 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
 {
     if (_missedTxs->size() == 0)
     {
-        _onVerifyFinished(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), true);
+        _onVerifyFinished(nullptr, true);
         return;
     }
     auto txsRequest =
@@ -293,7 +293,7 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
 void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data,
     HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished)
 {
-    if (_error->errorCode() != CommonError::SUCCESS)
+    if (_error != nullptr)
     {
         SYNC_LOG(WARNING) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
                           << LOG_KV("peer", _nodeID->shortHex())
@@ -304,16 +304,16 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
         return;
     }
     auto txsResponse = m_config->msgFactory()->createTxsSyncMsg(_data);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "Success");
+    auto error = nullptr;
     if (txsResponse->type() != TxsSyncPacketType::TxsResponsePacket)
     {
         SYNC_LOG(WARNING) << LOG_DESC("requestMissedTxs: receive invalid txsResponse")
                           << LOG_KV("peer", _nodeID->shortHex())
                           << LOG_KV("expectedType", TxsSyncPacketType::TxsResponsePacket)
                           << LOG_KV("recvType", txsResponse->type());
-        error = std::make_shared<Error>(
-            CommonError::FetchTransactionsFailed, "FetchTransactionsFailed");
-        _onVerifyFinished(error, false);
+        _onVerifyFinished(std::make_shared<Error>(
+                              CommonError::FetchTransactionsFailed, "FetchTransactionsFailed"),
+            false);
         return;
     }
     // verify missedTxs
@@ -322,18 +322,19 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     if (_missedTxs->size() != transactions->transactionsSize())
     {
         // response the verify result
-        error = std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing");
-        _onVerifyFinished(error, false);
+        _onVerifyFinished(
+            std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),
+            false);
         verifyResponsed = true;
     }
     // try to import the transactions even when verify failed
     if (!importDownloadedTxs(_nodeID, transactions))
     {
-        error = std::make_shared<Error>(
-            CommonError::TxsSignatureVerifyFailed, "TxsSignatureVerifyFailed");
         if (!verifyResponsed)
         {
-            _onVerifyFinished(error, false);
+            _onVerifyFinished(std::make_shared<Error>(CommonError::TxsSignatureVerifyFailed,
+                                  "TxsSignatureVerifyFailed"),
+                false);
         }
         return;
     }
@@ -342,9 +343,9 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     {
         if ((*_missedTxs)[i] != transactions->transaction(i)->hash())
         {
-            error = std::make_shared<Error>(
-                CommonError::InconsistentTransactions, "InconsistentTransactions");
-            _onVerifyFinished(error, false);
+            _onVerifyFinished(std::make_shared<Error>(CommonError::InconsistentTransactions,
+                                  "InconsistentTransactions"),
+                false);
             return;
         }
     }

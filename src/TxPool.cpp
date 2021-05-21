@@ -53,8 +53,7 @@ bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
     // notify txResult
     auto txResult = m_config->txResultFactory()->createTxSubmitResult(
         HashType(), (int32_t)TransactionStatus::RequestNotBelongToTheGroup);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _txSubmitCallback(error, txResult);
+    _txSubmitCallback(nullptr, txResult);
     TXPOOL_LOG(WARNING) << LOG_DESC("Do not send transactions to nodes that are not in the group");
     return false;
 }
@@ -63,24 +62,21 @@ void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
     std::function<void(Error::Ptr, HashListPtr)> _sealCallback)
 {
     auto fetchedTxs = m_txpoolStorage->batchFetchTxs(_txsLimit, _avoidTxs, true);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _sealCallback(error, fetchedTxs);
+    _sealCallback(nullptr, fetchedTxs);
 }
 
 void TxPool::asyncFetchNewTxs(
     size_t _txsLimit, std::function<void(Error::Ptr, ConstTransactionsPtr)> _onReceiveNewTxs)
 {
     auto fetchedTxs = m_txpoolStorage->fetchNewTxs(_txsLimit);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _onReceiveNewTxs(error, fetchedTxs);
+    _onReceiveNewTxs(nullptr, fetchedTxs);
 }
 
 void TxPool::asyncNotifyBlockResult(BlockNumber _blockNumber,
     TransactionSubmitResultsPtr _txsResult, std::function<void(Error::Ptr)> _onNotifyFinished)
 {
     m_txpoolStorage->batchRemove(_blockNumber, *_txsResult);
-    auto error = std::make_shared<Error>(CommonError::SUCCESS, "success");
-    _onNotifyFinished(error);
+    _onNotifyFinished(nullptr);
 }
 
 void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _block,
@@ -98,7 +94,7 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     size_t txsSize = block->transactionsHashSize();
     if (txsSize == 0)
     {
-        onVerifyFinishedWrapper(std::make_shared<Error>(CommonError::SUCCESS, "success"), true);
+        onVerifyFinishedWrapper(nullptr, true);
         return;
     }
     auto missedTxs = std::make_shared<HashList>();
@@ -113,7 +109,7 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     if (missedTxs->size() == 0)
     {
         TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock: hit all transactions in txpool");
-        onVerifyFinishedWrapper(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), true);
+        onVerifyFinishedWrapper(nullptr, true);
         return;
     }
     TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock") << LOG_KV("totoalTxs", txsSize)
@@ -126,14 +122,14 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, byt
     std::function<void(Error::Ptr _error)> _onRecv)
 {
     m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
-    _onRecv(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+    _onRecv(nullptr);
 }
 
 void TxPool::notifyConnectedNodes(
     NodeIDSet const& _connectedNodes, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setConnectedNodeList(_connectedNodes);
-    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+    _onRecvResponse(nullptr);
 }
 
 
@@ -141,14 +137,14 @@ void TxPool::notifyConsensusNodeList(
     ConsensusNodeList const& _consensusNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setConsensusNodeList(_consensusNodeList);
-    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+    _onRecvResponse(nullptr);
 }
 
 void TxPool::notifyObserverNodeList(
     ConsensusNodeList const& _observerNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setObserverList(_observerNodeList);
-    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "success"));
+    _onRecvResponse(nullptr);
 }
 
 // Note: the transaction must be all hit in local txpool
@@ -168,7 +164,7 @@ void TxPool::asyncFillBlock(HashListPtr _txsHash,
     }
     TXPOOL_LOG(DEBUG) << LOG_DESC("asyncFillBlock: hit all transactions")
                       << LOG_KV("size", txs->size());
-    _onBlockFilled(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"), txs);
+    _onBlockFilled(nullptr, txs);
 }
 
 
@@ -176,5 +172,5 @@ void TxPool::asyncMarkTxs(
     HashListPtr _txsHash, bool _sealedFlag, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_txpoolStorage->batchMarkTxs(*_txsHash, _sealedFlag);
-    _onRecvResponse(std::make_shared<Error>(CommonError::SUCCESS, "SUCCESS"));
+    _onRecvResponse(nullptr);
 }
