@@ -39,8 +39,8 @@ list(APPEND CMAKE_MODULE_PATH ${BCOS_TXPOOL_CMAKE_DIR})
 #init hunter
 include(HunterGate)
 HunterGate(
-	URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/8c81ea454c0c268b257da1fe3e3f2f69bd59a67d.tar.gz"
-    SHA1 "13292adf48c4c053ff2ceb7173631a296c08d1ac"
+    URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/60389000be6e74983b8790e695ba1bd10e88fab7.tar.gz"
+    SHA1 "8477caf1a595856cdc2c3b09568bbf9bf15f1f35"
     FILEPATH "${BCOS_TXPOOL_CMAKE_DIR}/config.cmake"
 )
 project(bcos-txpool VERSION "3.0.0")
@@ -52,7 +52,7 @@ configure_project()
 include(CompilerSettings)
 
 # copy .clang-format into the project path
-file(COPY ${BCOS_CMAKE_SCRIPTS_DIR}/.clang-format DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+include(CopyClangFormat)
 
 include_directories(${CMAKE_INSTALL_INCLUDEDIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -91,9 +91,10 @@ endif()
 
 # for doxygen
 include(BuildDocs)
+buildDoc(bcos-txpool-doc)
 
 # for code coverage
 if (COVERAGE)
     include(Coverage)
-    config_coverage("'/usr*' '${CMAKE_CURRENT_SOURCE_DIR}/bcos-cmake-scripts*' '${CMAKE_CURRENT_SOURCE_DIR}/test/bcos-test*'")
+    config_coverage("txpool-cov" "'/usr*' '${CMAKE_CURRENT_SOURCE_DIR}/bcos-cmake-scripts*' '${CMAKE_CURRENT_SOURCE_DIR}/test/bcos-test*'")
 endif ()
