@@ -95,4 +95,5 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     m_txsSyncConfig->setConsensusNodeList(ledgerConfig->consensusNodeList());
     m_txsSyncConfig->setObserverList(ledgerConfig->observerNodeList());
     TXPOOL_LOG(INFO) << LOG_DESC("init sync config success");
+    // TODO: fetch the connected nodeID from frontService
 }
