@@ -38,11 +38,13 @@ public:
     TxPoolConfig(TxValidatorInterface::Ptr _txValidator,
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
-        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger)
+        std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
+        NonceCheckerInterface::Ptr _txpoolNonceChecker)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
         m_blockFactory(_blockFactory),
-        m_ledger(_ledger)
+        m_ledger(_ledger),
+        m_txPoolNonceChecker(_txpoolNonceChecker)
     {}
 
     virtual ~TxPoolConfig() {}
@@ -63,7 +65,6 @@ public:
     virtual size_t poolLimit() const { return m_poolLimit; }
 
     NonceCheckerInterface::Ptr txPoolNonceChecker() { return m_txPoolNonceChecker; }
-    NonceCheckerInterface::Ptr ledgerNonceChecker() { return m_ledgerNonceChecker; }
 
     TxValidatorInterface::Ptr txValidator() { return m_txValidator; }
     bcos::protocol::TransactionSubmitResultFactory::Ptr txResultFactory()
@@ -93,7 +94,6 @@ private:
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
     bcos::sealer::SealerInterface::Ptr m_sealer;
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
-    NonceCheckerInterface::Ptr m_ledgerNonceChecker;
     size_t m_poolLimit = 15000;
     size_t m_notifierWorkerNum = 1;
     size_t m_verifyWorkerNum = 1;

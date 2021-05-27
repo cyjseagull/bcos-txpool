@@ -48,8 +48,8 @@ TxPoolFactory::TxPoolFactory(NodeIDPtr _nodeId, CryptoSuite::Ptr _cryptoSuite,
         std::make_shared<TxValidator>(txpoolNonceChecker, _cryptoSuite, _groupId, _chainId);
 
     TXPOOL_LOG(INFO) << LOG_DESC("create transaction config");
-    m_txpoolConfig =
-        std::make_shared<TxPoolConfig>(validator, _txResultFactory, _blockFactory, _ledger);
+    m_txpoolConfig = std::make_shared<TxPoolConfig>(
+        validator, _txResultFactory, _blockFactory, _ledger, txpoolNonceChecker);
     TXPOOL_LOG(INFO) << LOG_DESC("create transaction storage");
     auto txpoolStorage = std::make_shared<MemoryStorage>(m_txpoolConfig);
 
@@ -77,8 +77,13 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     TXPOOL_LOG(INFO) << LOG_DESC("fetch LedgerConfig success");
 
     auto ledgerConfig = ledgerConfigFetcher->ledgerConfig();
-    TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces information");
-    ledgerConfigFetcher->fetchNonceList(ledgerConfig->blockNumber(), m_blockLimit);
+    auto startNumber = (ledgerConfig->blockNumber() > m_blockLimit ?
+                            (ledgerConfig->blockNumber() - m_blockLimit + 1) :
+                            0);
+    auto toNumber = ledgerConfig->blockNumber();
+    TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces information")
+                     << LOG_KV("startNumber", startNumber) << LOG_KV("toNumber", toNumber);
+    ledgerConfigFetcher->fetchNonceList(startNumber, m_blockLimit);
     ledgerConfigFetcher->waitFetchFinished();
     TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces success");
 
@@ -86,6 +91,7 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     TXPOOL_LOG(INFO) << LOG_DESC("init txs validator");
     auto ledgerNonceChecker = std::make_shared<LedgerNonceChecker>(
         *(ledgerConfigFetcher->nonceList()), ledgerConfig->blockNumber(), m_blockLimit);
+
     auto validator = std::dynamic_pointer_cast<TxValidator>(m_txpoolConfig->txValidator());
     validator->setLedgerNonceChecker(ledgerNonceChecker);
     TXPOOL_LOG(INFO) << LOG_DESC("init txs validator success");

@@ -30,7 +30,6 @@ using namespace bcos::txpool;
 using namespace bcos::protocol;
 using namespace bcos::ledger;
 using namespace bcos::consensus;
-
 static unsigned const c_maxSendTransactions = 1000;
 
 void TransactionSync::start()
@@ -90,7 +89,7 @@ void TransactionSync::onRecvSyncMessage(
         if (txsSyncMsg->type() == TxsSyncPacketType::TxsPacket)
         {
             txsSyncMsg->setFrom(_nodeID);
-            appendDownTxsBuffer(txsSyncMsg);
+            appendDownloadTxsBuffer(txsSyncMsg);
             m_signalled.notify_all();
             return;
         }
@@ -160,11 +159,10 @@ void TransactionSync::onReceiveTxsRequest(
     }
     // response the txs
     auto block = m_config->blockFactory()->createBlock();
-    size_t i = 0;
     for (auto constTx : *txs)
     {
         auto tx = std::const_pointer_cast<Transaction>(constTx);
-        block->setTransaction(i, tx);
+        block->appendTransaction(tx);
     }
     bytesPointer txsData = std::make_shared<bytes>();
     block->encode(*txsData);
@@ -261,8 +259,8 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
     auto self = std::weak_ptr<TransactionSync>(shared_from_this());
     m_config->frontService()->asyncSendMessageByNodeID(ModuleID::TxsSync, _generatedNodeID,
         ref(*encodedData), m_config->networkTimeout(),
-        [self, _missedTxs, _onVerifyFinished](
-            Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data, SendResponseCallback) {
+        [self, _missedTxs, _onVerifyFinished](Error::Ptr _error, NodeIDPtr _nodeID,
+            bytesConstRef _data, const std::string&, SendResponseCallback) {
             try
             {
                 auto transactionSync = self.lock();
@@ -272,11 +270,13 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
                 }
                 transactionSync->verifyFetchedTxs(_error, _nodeID, _data, _missedTxs,
                     [_onVerifyFinished](Error::Ptr _error, bool _result) {
+                        if (!_onVerifyFinished)
+                        {
+                            return;
+                        }
                         _onVerifyFinished(_error, _result);
-
                         SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: response verify result")
-                                        << LOG_KV("_result", _result)
-                                        << LOG_KV("retCode", _error->errorMessage());
+                                        << LOG_KV("_result", _result);
                     });
             }
             catch (std::exception const& e)
@@ -439,6 +439,7 @@ bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, TransactionsPtr _
         successImportTxs++;
     }
     SYNC_LOG(DEBUG) << LOG_DESC("maintainDownloadingTransactions success")
+                    << LOG_KV("nodeId", m_config->nodeID()->shortHex())
                     << LOG_KV("successImportTxs", successImportTxs) << LOG_KV("totalTxs", txsSize);
     return verifySuccess;
 }
@@ -446,7 +447,14 @@ bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, TransactionsPtr _
 void TransactionSync::maintainTransactions()
 {
     auto txs = m_config->txpoolStorage()->fetchNewTxs(c_maxSendTransactions);
+    if (txs->size() == 0)
+    {
+        return;
+    }
     broadcastTxsFromRpc(txs);
+    // Added sleep to prevent excessive redundant transaction message packets caused by
+    // transaction status spreading too fast
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     forwardTxsFromP2P(txs);
 }
 
@@ -456,7 +464,7 @@ void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
     auto consensusNodeList = m_config->consensusNodeList();
     auto connectedNodeList = m_config->connectedNodeList();
     auto expectedPeers = (consensusNodeList.size() * m_config->forwardPercent() + 99) / 100;
-    std::map<NodeIDPtr, HashListPtr> peerToForwardedTxs;
+    std::map<NodeIDPtr, HashListPtr, KeyCompare> peerToForwardedTxs;
     for (auto tx : *_txs)
     {
         auto selectedPeers = selectPeers(tx, connectedNodeList, consensusNodeList, expectedPeers);
@@ -479,6 +487,8 @@ void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
         auto packetData = txsStatus->encode();
         m_config->frontService()->asyncSendMessageByNodeID(
             ModuleID::TxsSync, peer, ref(*packetData), 0, nullptr);
+        SYNC_LOG(DEBUG) << LOG_DESC("txsStatus: forwardTxsFromP2P")
+                        << LOG_KV("to", peer->shortHex()) << LOG_KV("txsSize", txsHash->size());
     }
 }
 
@@ -519,14 +529,17 @@ void TransactionSync::broadcastTxsFromRpc(ConstTransactionsPtr _txs)
 {
     auto block = m_config->blockFactory()->createBlock();
     // get the transactions from RPC
-    size_t index = 0;
     for (auto tx : *_txs)
     {
         if (!tx->submitCallback())
         {
             continue;
         }
-        block->setTransaction(index++, std::const_pointer_cast<Transaction>(tx));
+        block->appendTransaction(std::const_pointer_cast<Transaction>(tx));
+    }
+    if (block->transactionsSize() == 0)
+    {
+        return;
     }
     // broadcast the txs to all consensus node
     auto encodedData = std::make_shared<bytes>();
@@ -537,6 +550,10 @@ void TransactionSync::broadcastTxsFromRpc(ConstTransactionsPtr _txs)
     auto consensusNodeList = m_config->consensusNodeList();
     for (auto const& consensusNode : consensusNodeList)
     {
+        if (consensusNode->nodeID()->data() == m_config->nodeID()->data())
+        {
+            continue;
+        }
         m_config->frontService()->asyncSendMessageByNodeID(
             ModuleID::TxsSync, consensusNode->nodeID(), ref(*packetData), 0, nullptr);
         SYNC_LOG(DEBUG) << LOG_DESC("broadcastTxsFromRpc")

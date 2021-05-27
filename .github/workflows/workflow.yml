@@ -177,6 +177,13 @@ jobs:
         run: make -j2
       - name: run test
         run: CTEST_OUTPUT_ON_FAILURE=TRUE make test
+      - name: generate coverage
+        run: make txpool-cov
+      - name: upload code coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.info
+          name: bcos-txpool coverage
   build_with_centos:
     name: build_with_centos
     runs-on: ubuntu-latest

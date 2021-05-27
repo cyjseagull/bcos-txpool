@@ -38,9 +38,15 @@ void TxPool::stop()
     m_transactionSync->stop();
 }
 
-void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
+void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback,
+    std::function<void(Error::Ptr)> _onRecv)
 {
     asyncSubmitTransaction(_txData, _txSubmitCallback);
+    if (!_onRecv)
+    {
+        return;
+    }
+    _onRecv(nullptr);
 }
 
 bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
@@ -122,6 +128,10 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, byt
     std::function<void(Error::Ptr _error)> _onRecv)
 {
     m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
+    if (!_onRecv)
+    {
+        return;
+    }
     _onRecv(nullptr);
 }
 

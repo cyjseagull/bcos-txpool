@@ -38,7 +38,12 @@ TransactionStatus MemoryStorage::submitTransaction(
     try
     {
         auto tx = m_config->txFactory()->createTransaction(ref(*_txData), false);
-        return submitTransaction(tx, _txSubmitCallback);
+        auto result = submitTransaction(tx, _txSubmitCallback);
+        if (result != TransactionStatus::None)
+        {
+            notifyInvalidReceipt(tx->hash(), result, _txSubmitCallback);
+        }
+        return result;
     }
     catch (std::exception const& e)
     {
@@ -49,6 +54,20 @@ TransactionStatus MemoryStorage::submitTransaction(
     }
 }
 
+TransactionStatus MemoryStorage::txpoolStorageCheck(Transaction::ConstPtr _tx)
+{
+    if (size() >= m_config->poolLimit())
+    {
+        return TransactionStatus::TxPoolIsFull;
+    }
+    auto txHash = _tx->hash();
+    if (exist(txHash))
+    {
+        return TransactionStatus::AlreadyInTxPool;
+    }
+    return TransactionStatus::None;
+}
+
 TransactionStatus MemoryStorage::submitTransaction(
     Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
 {
@@ -56,8 +75,13 @@ TransactionStatus MemoryStorage::submitTransaction(
     {
         _tx->setSubmitCallback(_txSubmitCallback);
     }
+    auto result = txpoolStorageCheck(_tx);
+    if (result != TransactionStatus::None)
+    {
+        return result;
+    }
     // verify the transaction
-    auto result = m_config->txValidator()->verify(_tx);
+    result = m_config->txValidator()->verify(_tx);
     _tx->setImportTime(utcTime());
     if (result == TransactionStatus::None)
     {
@@ -91,18 +115,14 @@ void MemoryStorage::notifyInvalidReceipt(
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
+    auto result = txpoolStorageCheck(_tx);
+    if (result != TransactionStatus::None)
+    {
+        return result;
+    }
     ReadGuard l(x_txpoolMutex);
-    if (size() >= m_config->poolLimit())
-    {
-        return TransactionStatus::TxPoolIsFull;
-    }
-    auto txHash = _tx->hash();
-    if (m_txsTable.count(txHash))
-    {
-        return TransactionStatus::AlreadyInTxPool;
-    }
     auto txIterator = m_txsQueue.emplace(_tx).first;
-    m_txsTable[txHash] = txIterator;
+    m_txsTable[_tx->hash()] = txIterator;
     m_onReady();
     preCommitTransaction(_tx);
     return TransactionStatus::None;

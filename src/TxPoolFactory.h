@@ -29,6 +29,7 @@ namespace txpool
 class TxPoolFactory
 {
 public:
+    using Ptr = std::shared_ptr<TxPoolFactory>;
     TxPoolFactory(bcos::crypto::NodeIDPtr _nodeId, bcos::crypto::CryptoSuite::Ptr _cryptoSuite,
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,

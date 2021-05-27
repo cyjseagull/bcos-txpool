@@ -65,7 +65,11 @@ public:
     bcos::crypto::HashListPtr batchFetchTxs(
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
-    bool exist(bcos::crypto::HashType const& _txHash) override { return m_txsTable.count(_txHash); }
+    bool exist(bcos::crypto::HashType const& _txHash) override
+    {
+        ReadGuard l(x_txpoolMutex);
+        return m_txsTable.count(_txHash);
+    }
     size_t size() const override;
     size_t unSealedTxsSize() override;
     void clear() override;
@@ -76,6 +80,8 @@ public:
     void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) override;
 
 protected:
+    bcos::protocol::TransactionStatus txpoolStorageCheck(bcos::protocol::Transaction::ConstPtr _tx);
+
     virtual bcos::protocol::Transaction::ConstPtr removeWithoutLock(
         bcos::crypto::HashType const& _txHash);
     virtual bcos::protocol::Transaction::ConstPtr removeSubmittedTxWithoutLock(

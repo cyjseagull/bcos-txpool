@@ -30,6 +30,7 @@ namespace txpool
 class TxPool : public TxPoolInterface, public std::enable_shared_from_this<TxPool>
 {
 public:
+    using Ptr = std::shared_ptr<TxPool>;
     TxPool(TxPoolConfig::Ptr _config, TxPoolStorageInterface::Ptr _txpoolStorage,
         bcos::sync::TransactionSyncInterface::Ptr _transactionSync)
       : m_config(_config), m_txpoolStorage(_txpoolStorage), m_transactionSync(_transactionSync)
@@ -42,12 +43,13 @@ public:
     void start() override;
     void stop() override;
 
-    void asyncSubmit(
-        bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback) override;
+    void asyncSubmit(bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback,
+        std::function<void(Error::Ptr)> _onRecv) override;
 
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
         std::function<void(Error::Ptr, bcos::crypto::HashListPtr)> _sealCallback) override;
 
+    // TODO: delete this interface
     void asyncFetchNewTxs(size_t _txsLimit,
         std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)> _onReceiveNewTxs)
         override;
@@ -77,6 +79,11 @@ public:
 
     void asyncMarkTxs(bcos::crypto::HashListPtr _txsHash, bool _sealedFlag,
         std::function<void(Error::Ptr)> _onRecvResponse) override;
+
+    TxPoolConfig::Ptr txpoolConfig() { return m_config; }
+    TxPoolStorageInterface::Ptr txpoolStorage() { return m_txpoolStorage; }
+
+    bcos::sync::TransactionSyncInterface::Ptr transactionSync() { return m_transactionSync; }
 
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);

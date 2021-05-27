@@ -59,9 +59,12 @@ public:
     void requestMissedTxs(bcos::crypto::PublicPtr _generatedNodeID,
         bcos::crypto::HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished) override;
 
+    virtual void maintainTransactions();
+    virtual void maintainDownloadingTransactions();
+
 protected:
     void executeWorker() override;
-    virtual void maintainTransactions();
+
     virtual void broadcastTxsFromRpc(bcos::protocol::ConstTransactionsPtr _txs);
     virtual void forwardTxsFromP2P(bcos::protocol::ConstTransactionsPtr _txs);
     virtual bcos::crypto::NodeIDListPtr selectPeers(bcos::protocol::Transaction::ConstPtr _tx,
@@ -69,8 +72,6 @@ protected:
         bcos::consensus::ConsensusNodeList const& _consensusNodeList, size_t _expectedSize);
     virtual void onPeerTxsStatus(
         bcos::crypto::NodeIDPtr _fromNode, TxsSyncMsgInterface::Ptr _txsStatus);
-
-    virtual void maintainDownloadingTransactions();
 
     virtual void onReceiveTxsRequest(
         TxsSyncMsgInterface::Ptr _txsRequest, SendResponseCallback _sendResponse);
@@ -92,7 +93,7 @@ protected:
         return (m_downloadTxsBuffer->size() == 0);
     }
 
-    virtual void appendDownTxsBuffer(TxsSyncMsgInterface::Ptr _txsBuffer)
+    virtual void appendDownloadTxsBuffer(TxsSyncMsgInterface::Ptr _txsBuffer)
     {
         WriteGuard l(x_downloadTxsBuffer);
         m_downloadTxsBuffer->emplace_back(_txsBuffer);
