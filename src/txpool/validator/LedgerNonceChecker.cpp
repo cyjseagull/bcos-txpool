@@ -70,10 +70,9 @@ void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceLi
 
     auto batchToBeRemoved = (_batchId > m_blockLimit) ? (_batchId - m_blockLimit) : 0;
     // insert the latest nonces
-    for (auto const& nonce : *_nonceList)
-    {
-        insert(nonce);
-    }
+    TxPoolNonceChecker::batchInsert(_batchId, _nonceList);
+
+    WriteGuard l(x_blockNonceCache);
     if (!m_blockNonceCache.count(_batchId))
     {
         m_blockNonceCache[_batchId] = _nonceList;
@@ -86,9 +85,10 @@ void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceLi
         // TODO: request the ledger to get the missed cache(maybe this case is impossible)
         NONCECHECKER_LOG(FATAL) << LOG_DESC("batchInsert: miss cache when remove expired cache")
                                 << LOG_KV("batchToBeRemoved", batchToBeRemoved);
+        return;
     }
     auto nonceList = m_blockNonceCache[batchToBeRemoved];
-    m_blockNonceCache.unsafe_erase(batchToBeRemoved);
+    m_blockNonceCache.erase(batchToBeRemoved);
     batchRemove(*nonceList);
     NONCECHECKER_LOG(DEBUG) << LOG_DESC("batchInsert: remove expired nonce")
                             << LOG_KV("batchToBeRemoved", batchToBeRemoved)

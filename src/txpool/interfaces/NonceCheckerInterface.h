@@ -22,6 +22,8 @@
 #include <bcos-framework/interfaces/protocol/ProtocolTypeDef.h>
 #include <bcos-framework/interfaces/protocol/Transaction.h>
 #include <bcos-framework/libprotocol/TransactionStatus.h>
+#define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1
+#include <tbb/concurrent_set.h>
 
 #define NONCECHECKER_LOG(LEVEL) LOG(LEVEL) << LOG_BADGE("TXPOOL") << LOG_BADGE("NonceChecker")
 
@@ -38,12 +40,15 @@ public:
 
     virtual bcos::protocol::TransactionStatus checkNonce(
         bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) = 0;
-    virtual void insert(bcos::protocol::NonceType const& _nonce) = 0;
+    virtual bool exists(bcos::protocol::NonceType const& _nonce) = 0;
     virtual void batchInsert(
         bcos::protocol::BlockNumber _batchId, bcos::protocol::NonceListPtr _nonceList) = 0;
-
-    virtual void remove(bcos::protocol::NonceType const& _nonce) = 0;
     virtual void batchRemove(bcos::protocol::NonceList const& _nonceList) = 0;
+    virtual void batchRemove(tbb::concurrent_set<bcos::protocol::NonceType> const& _nonceList) = 0;
+
+protected:
+    virtual void insert(bcos::protocol::NonceType const& _nonce) = 0;
+    virtual void remove(bcos::protocol::NonceType const& _nonce) = 0;
 };
 }  // namespace txpool
 }  // namespace bcos

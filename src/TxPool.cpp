@@ -71,17 +71,14 @@ void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
     _sealCallback(nullptr, fetchedTxs);
 }
 
-void TxPool::asyncFetchNewTxs(
-    size_t _txsLimit, std::function<void(Error::Ptr, ConstTransactionsPtr)> _onReceiveNewTxs)
-{
-    auto fetchedTxs = m_txpoolStorage->fetchNewTxs(_txsLimit);
-    _onReceiveNewTxs(nullptr, fetchedTxs);
-}
-
 void TxPool::asyncNotifyBlockResult(BlockNumber _blockNumber,
     TransactionSubmitResultsPtr _txsResult, std::function<void(Error::Ptr)> _onNotifyFinished)
 {
     m_txpoolStorage->batchRemove(_blockNumber, *_txsResult);
+    if (!_onNotifyFinished)
+    {
+        return;
+    }
     _onNotifyFinished(nullptr);
 }
 
@@ -139,6 +136,10 @@ void TxPool::notifyConnectedNodes(
     NodeIDSet const& _connectedNodes, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setConnectedNodeList(_connectedNodes);
+    if (!_onRecvResponse)
+    {
+        return;
+    }
     _onRecvResponse(nullptr);
 }
 
@@ -147,6 +148,10 @@ void TxPool::notifyConsensusNodeList(
     ConsensusNodeList const& _consensusNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setConsensusNodeList(_consensusNodeList);
+    if (!_onRecvResponse)
+    {
+        return;
+    }
     _onRecvResponse(nullptr);
 }
 
@@ -154,6 +159,10 @@ void TxPool::notifyObserverNodeList(
     ConsensusNodeList const& _observerNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_transactionSync->config()->setObserverList(_observerNodeList);
+    if (!_onRecvResponse)
+    {
+        return;
+    }
     _onRecvResponse(nullptr);
 }
 
@@ -182,5 +191,9 @@ void TxPool::asyncMarkTxs(
     HashListPtr _txsHash, bool _sealedFlag, std::function<void(Error::Ptr)> _onRecvResponse)
 {
     m_txpoolStorage->batchMarkTxs(*_txsHash, _sealedFlag);
+    if (!_onRecvResponse)
+    {
+        return;
+    }
     _onRecvResponse(nullptr);
 }

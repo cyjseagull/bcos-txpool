@@ -44,14 +44,16 @@ public:
     {}
 
     void asyncNoteUnSealedTxsSize(
-        size_t _unsealedTxsSize, std::function<void(Error::Ptr)> _onRecvResponse) override
+        size_t _unSealedTxsSize, std::function<void(Error::Ptr)> _onRecvResponse) override
     {
-        m_unsealedTxsSize = _unsealedTxsSize;
+        m_unSealedTxsSize = _unSealedTxsSize;
         _onRecvResponse(nullptr);
     }
 
+    size_t unSealedTxsSize() { return m_unSealedTxsSize; }
+
 private:
-    std::atomic<uint64_t> m_unsealedTxsSize = {0};
+    std::atomic<size_t> m_unSealedTxsSize = {0};
 };
 }  // namespace test
 }  // namespace bcos

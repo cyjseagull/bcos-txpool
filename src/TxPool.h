@@ -49,11 +49,6 @@ public:
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
         std::function<void(Error::Ptr, bcos::crypto::HashListPtr)> _sealCallback) override;
 
-    // TODO: delete this interface
-    void asyncFetchNewTxs(size_t _txsLimit,
-        std::function<void(Error::Ptr, bcos::protocol::ConstTransactionsPtr)> _onReceiveNewTxs)
-        override;
-
     void asyncNotifyBlockResult(bcos::protocol::BlockNumber _blockNumber,
         bcos::protocol::TransactionSubmitResultsPtr _txsResult,
         std::function<void(Error::Ptr)> _onNotifyFinished) override;
@@ -84,6 +79,10 @@ public:
     TxPoolStorageInterface::Ptr txpoolStorage() { return m_txpoolStorage; }
 
     bcos::sync::TransactionSyncInterface::Ptr transactionSync() { return m_transactionSync; }
+    void setTransactionSync(bcos::sync::TransactionSyncInterface::Ptr _transactionSync)
+    {
+        m_transactionSync = _transactionSync;
+    }
 
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);

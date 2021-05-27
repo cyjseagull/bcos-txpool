@@ -39,18 +39,12 @@ public:
     {}
     ~TxValidator() override {}
 
-    void setLedgerNonceChecker(NonceCheckerInterface::Ptr _ledgerNonceChecker)
-    {
-        m_ledgerNonceChecker = _ledgerNonceChecker;
-    }
-
     bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::ConstPtr _tx) override;
-    bcos::protocol::TransactionStatus duplicateTx(
+    bcos::protocol::TransactionStatus submittedToChain(
         bcos::protocol::Transaction::ConstPtr _tx) override;
 
 private:
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
-    NonceCheckerInterface::Ptr m_ledgerNonceChecker;
     bcos::crypto::CryptoSuite::Ptr m_cryptoSuite;
     std::string m_groupId;
     std::string m_chainId;

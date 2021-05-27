@@ -19,6 +19,7 @@
  * @date 2021-05-08
  */
 #pragma once
+#include "txpool/interfaces/NonceCheckerInterface.h"
 #include <bcos-framework/interfaces/protocol/Transaction.h>
 #include <bcos-framework/libprotocol/TransactionStatus.h>
 namespace bcos
@@ -33,8 +34,16 @@ public:
     virtual ~TxValidatorInterface() {}
 
     virtual bcos::protocol::TransactionStatus verify(bcos::protocol::Transaction::ConstPtr _tx) = 0;
-    virtual bcos::protocol::TransactionStatus duplicateTx(
+    virtual bcos::protocol::TransactionStatus submittedToChain(
         bcos::protocol::Transaction::ConstPtr _tx) = 0;
+    virtual NonceCheckerInterface::Ptr ledgerNonceChecker() { return m_ledgerNonceChecker; }
+    virtual void setLedgerNonceChecker(NonceCheckerInterface::Ptr _ledgerNonceChecker)
+    {
+        m_ledgerNonceChecker = _ledgerNonceChecker;
+    }
+
+protected:
+    NonceCheckerInterface::Ptr m_ledgerNonceChecker;
 };
 }  // namespace txpool
 }  // namespace bcos

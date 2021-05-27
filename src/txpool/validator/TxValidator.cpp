@@ -30,11 +30,6 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     {
         return TransactionStatus::InvalidSignature;
     }
-    auto status = duplicateTx(_tx);
-    if (status != TransactionStatus::None)
-    {
-        return status;
-    }
     // check groupId and chainId
     if (_tx->groupId() != m_groupId)
     {
@@ -43,6 +38,17 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     if (_tx->chainId() != m_chainId)
     {
         return TransactionStatus::InvalidChainId;
+    }
+    // compare with nonces cached in memory
+    auto status = m_txPoolNonceChecker->checkNonce(_tx, true);
+    if (status != TransactionStatus::None)
+    {
+        return status;
+    }
+    status = submittedToChain(_tx);
+    if (status != TransactionStatus::None)
+    {
+        return status;
     }
     // check signature
     try
@@ -56,16 +62,10 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     return TransactionStatus::None;
 }
 
-TransactionStatus TxValidator::duplicateTx(bcos::protocol::Transaction::ConstPtr _tx)
+TransactionStatus TxValidator::submittedToChain(bcos::protocol::Transaction::ConstPtr _tx)
 {
-    // compare with nonces cached in memory
-    auto status = m_txPoolNonceChecker->checkNonce(_tx, true);
-    if (status != TransactionStatus::None)
-    {
-        return status;
-    }
     // compare with nonces stored on-chain
-    status = m_ledgerNonceChecker->checkNonce(_tx);
+    auto status = m_ledgerNonceChecker->checkNonce(_tx);
     if (status != TransactionStatus::None)
     {
         return status;

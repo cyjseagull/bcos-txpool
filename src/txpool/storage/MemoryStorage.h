@@ -20,11 +20,10 @@
  */
 #pragma once
 #include "TxPoolConfig.h"
-#define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1
 #include <bcos-framework/libutilities/ThreadPool.h>
-#include <tbb/concurrent_set.h>
 #include <tbb/concurrent_unordered_map.h>
-
+#define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1
+#include <tbb/concurrent_set.h>
 namespace bcos
 {
 namespace txpool
@@ -105,12 +104,7 @@ private:
     ThreadPool::Ptr m_notifier;
     ThreadPool::Ptr m_worker;
 
-    using TransactionQueue =
-        tbb::concurrent_set<bcos::protocol::Transaction::ConstPtr, TransactionCompare>;
-    TransactionQueue m_txsQueue;
-    // to accelerate txs query for unordered for unorder performance is higher than non-unorder in
-    // big data scenarios
-    tbb::concurrent_unordered_map<bcos::crypto::HashType, TransactionQueue::iterator,
+    tbb::concurrent_unordered_map<bcos::crypto::HashType, bcos::protocol::Transaction::ConstPtr,
         std::hash<bcos::crypto::HashType>>
         m_txsTable;
 
@@ -121,7 +115,7 @@ private:
 
     tbb::concurrent_set<bcos::crypto::HashType> m_missedTxs;
     mutable SharedMutex x_missedTxs;
-    std::atomic<size_t> m_sealedTxsSize;
+    std::atomic<size_t> m_sealedTxsSize = {0};
 };
 }  // namespace txpool
 }  // namespace bcos

@@ -24,9 +24,19 @@ using namespace bcos;
 using namespace bcos::protocol;
 using namespace bcos::txpool;
 
-TransactionStatus TxPoolNonceChecker::checkNonce(
-    bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate)
+bool TxPoolNonceChecker::exists(NonceType const& _nonce)
 {
+    ReadGuard l(x_nonceCache);
+    if (m_nonceCache.count(_nonce))
+    {
+        return true;
+    }
+    return false;
+}
+
+TransactionStatus TxPoolNonceChecker::checkNonce(Transaction::ConstPtr _tx, bool _shouldUpdate)
+{
+    ReadGuard l(x_nonceCache);
     auto nonce = _tx->nonce();
     if (m_nonceCache.count(nonce))
     {
@@ -46,6 +56,7 @@ void TxPoolNonceChecker::insert(NonceType const& _nonce)
 
 void TxPoolNonceChecker::batchInsert(BlockNumber, NonceListPtr _nonceList)
 {
+    ReadGuard l(x_nonceCache);
     for (auto const& nonce : *_nonceList)
     {
         insert(nonce);
@@ -60,8 +71,19 @@ void TxPoolNonceChecker::remove(NonceType const& _nonce)
     }
 }
 
-void TxPoolNonceChecker::batchRemove(bcos::protocol::NonceList const& _nonceList)
+void TxPoolNonceChecker::batchRemove(NonceList const& _nonceList)
 {
+    WriteGuard l(x_nonceCache);
+    for (auto const& nonce : _nonceList)
+    {
+        remove(nonce);
+    }
+}
+
+void TxPoolNonceChecker::batchRemove(
+    tbb::concurrent_set<bcos::protocol::NonceType> const& _nonceList)
+{
+    WriteGuard l(x_nonceCache);
     for (auto const& nonce : _nonceList)
     {
         remove(nonce);

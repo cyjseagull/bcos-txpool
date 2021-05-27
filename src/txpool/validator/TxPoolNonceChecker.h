@@ -32,15 +32,18 @@ public:
     TxPoolNonceChecker() = default;
     bcos::protocol::TransactionStatus checkNonce(
         bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) override;
-    void insert(bcos::protocol::NonceType const& _nonce) override;
     void batchInsert(
         bcos::protocol::BlockNumber _batchId, bcos::protocol::NonceListPtr _nonceList) override;
-
-    void remove(bcos::protocol::NonceType const& _nonce) override;
     void batchRemove(bcos::protocol::NonceList const& _nonceList) override;
+    void batchRemove(tbb::concurrent_set<bcos::protocol::NonceType> const& _nonceList) override;
+    bool exists(bcos::protocol::NonceType const& _nonce) override;
 
-private:
+protected:
+    void insert(bcos::protocol::NonceType const& _nonce) override;
+    void remove(bcos::protocol::NonceType const& _nonce) override;
+
     tbb::concurrent_unordered_set<bcos::protocol::NonceType> m_nonceCache;
+    mutable SharedMutex x_nonceCache;
 };
 }  // namespace txpool
 }  // namespace bcos

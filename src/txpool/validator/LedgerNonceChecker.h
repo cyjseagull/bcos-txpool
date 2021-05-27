@@ -21,8 +21,6 @@
 #pragma once
 #include "TxPoolNonceChecker.h"
 #include <bcos-framework/interfaces/ledger/LedgerInterface.h>
-#define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1
-#include <tbb/concurrent_map.h>
 
 namespace bcos
 {
@@ -49,14 +47,15 @@ protected:
     virtual void initNonceCache(std::map<int64_t, bcos::protocol::NonceListPtr> _initialNonces);
 
 private:
-    std::atomic<bcos::protocol::BlockNumber> m_blockNumber;
+    std::atomic<bcos::protocol::BlockNumber> m_blockNumber = {0};
     int64_t m_blockLimit;
 
     /// cache the block nonce to in case of accessing the DB to get nonces of given block frequently
     /// key: block number
     /// value: all the nonces of a given block
     /// we cache at most m_blockLimit entries(occuppy about 32KB)
-    tbb::concurrent_map<int64_t, bcos::protocol::NonceListPtr> m_blockNonceCache;
+    std::map<int64_t, bcos::protocol::NonceListPtr> m_blockNonceCache;
+    mutable SharedMutex x_blockNonceCache;
 };
 }  // namespace txpool
 }  // namespace bcos

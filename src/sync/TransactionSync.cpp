@@ -325,17 +325,15 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
         _onVerifyFinished(
             std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),
             false);
-        verifyResponsed = true;
+        importDownloadedTxs(_nodeID, transactions);
+        return;
     }
     // try to import the transactions even when verify failed
     if (!importDownloadedTxs(_nodeID, transactions))
     {
-        if (!verifyResponsed)
-        {
-            _onVerifyFinished(std::make_shared<Error>(CommonError::TxsSignatureVerifyFailed,
-                                  "TxsSignatureVerifyFailed"),
-                false);
-        }
+        _onVerifyFinished(std::make_shared<Error>(
+                              CommonError::TxsSignatureVerifyFailed, "TxsSignatureVerifyFailed"),
+            false);
         return;
     }
     // check the transaction hash
@@ -350,7 +348,7 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
         }
     }
     _onVerifyFinished(error, true);
-    SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs and response the verify result");
+    SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs and verify success");
 }
 
 void TransactionSync::maintainDownloadingTransactions()
@@ -390,6 +388,10 @@ bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, Block::Ptr _txsBu
 
 bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, TransactionsPtr _txs)
 {
+    if (_txs->size() == 0)
+    {
+        return true;
+    }
     auto txsSize = _txs->size();
     // Note: only need verify the signature for the transactions
     std::atomic_bool verifySuccess = true;
@@ -438,7 +440,7 @@ bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, TransactionsPtr _
         }
         successImportTxs++;
     }
-    SYNC_LOG(DEBUG) << LOG_DESC("maintainDownloadingTransactions success")
+    SYNC_LOG(DEBUG) << LOG_DESC("importDownloadedTxs success")
                     << LOG_KV("nodeId", m_config->nodeID()->shortHex())
                     << LOG_KV("successImportTxs", successImportTxs) << LOG_KV("totalTxs", txsSize);
     return verifySuccess;

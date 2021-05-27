@@ -49,6 +49,23 @@ namespace bcos
 {
 namespace test
 {
+class FakeTransactionSync : public TransactionSync
+{
+public:
+    explicit FakeTransactionSync(TransactionSyncConfig::Ptr _config) : TransactionSync(_config) {}
+    ~FakeTransactionSync() override {}
+
+    // only broadcast txsStatus
+    void maintainTransactions() override
+    {
+        auto txs = config()->txpoolStorage()->fetchNewTxs(10000);
+        if (txs->size() == 0)
+        {
+            return;
+        }
+        forwardTxsFromP2P(txs);
+    }
+};
 class TxPoolFixture
 {
 public:
@@ -88,18 +105,26 @@ public:
     std::string const& groupId() { return m_groupId; }
     FakeFrontService::Ptr frontService() { return m_frontService; }
     TransactionSync::Ptr sync() { return m_sync; }
+    FakeSealer::Ptr sealer() { return m_sealer; }
     void appendSealer(NodeIDPtr _nodeId)
     {
         auto consensusNode = std::make_shared<ConsensusNode>(_nodeId);
         m_ledger->ledgerConfig()->mutableConsensusNodeList().emplace_back(consensusNode);
-        m_txpool->transactionSync()->config()->setConsensusNodeList(
-            m_ledger->ledgerConfig()->consensusNodeList());
+        m_txpool->notifyConsensusNodeList(m_ledger->ledgerConfig()->consensusNodeList(), nullptr);
         updateConnectedNodeList();
     }
     void init()
     {
         // init the txpool
         m_txPoolFactory->init(m_sealer);
+    }
+
+    void resetToFakeTransactionSync()
+    {
+        auto syncConfig = m_sync->config();
+        syncConfig->setForwardPercent(100);
+        m_sync = std::make_shared<FakeTransactionSync>(syncConfig);
+        m_txpool->setTransactionSync(m_sync);
     }
 
 private:
@@ -111,6 +136,7 @@ private:
             nodeIdSet.insert(node->nodeID());
         }
         m_txpool->transactionSync()->config()->setConnectedNodeList(nodeIdSet);
+        m_txpool->notifyConnectedNodes(nodeIdSet, nullptr);
     }
 
 private:
@@ -132,37 +158,46 @@ private:
 
 inline void checkTxSubmit(TxPoolInterface::Ptr _txpool, TxPoolStorageInterface::Ptr _storage,
     Transaction::Ptr _tx, HashType const& _expectedTxHash, uint32_t _expectedStatus,
-    size_t expectedTxSize, bool _needWaitResult = true, bool _waitNothing = false)
+    size_t expectedTxSize, bool _needWaitResult = true, bool _waitNothing = false,
+    bool _maybeExpired = false)
 {
-    bool verifyFinish = false;
+    std::shared_ptr<bool> verifyFinish = std::make_shared<bool>(false);
     auto encodedData = _tx->encode();
     auto txData = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
     _txpool->asyncSubmit(
         txData,
-        [&](Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
+        [verifyFinish, _expectedTxHash, _expectedStatus, _maybeExpired](
+            Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
             BOOST_CHECK(_error == nullptr);
+            std::cout << "#### expectedTxHash:" << _expectedTxHash.abridged() << std::endl;
+            std::cout << "##### receipt txHash:" << _result->txHash().abridged() << std::endl;
             BOOST_CHECK(_result->txHash() == _expectedTxHash);
-            BOOST_CHECK(_result->status() == _expectedStatus);
-            verifyFinish = true;
+            std::cout << "##### _expectedStatus: " << std::to_string(_expectedStatus) << std::endl;
+            std::cout << "##### receiptStatus:" << std::to_string(_result->status()) << std::endl;
+            if (_maybeExpired)
+            {
+                BOOST_CHECK((_result->status() == _expectedStatus) ||
+                            (_result->status() == (int32_t)TransactionStatus::BlockLimitCheckFail));
+            }
+            *verifyFinish = true;
         },
         [&](Error::Ptr _error) { BOOST_CHECK(_error == nullptr); });
     if (_waitNothing)
     {
         return;
     }
-    while (!verifyFinish && _needWaitResult)
+    while (!*verifyFinish && _needWaitResult)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     if (!_needWaitResult)
     {
         while (_storage->size() != expectedTxSize)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
     }
     BOOST_CHECK(_storage->size() == expectedTxSize);
 }
-
 }  // namespace test
 }  // namespace bcos

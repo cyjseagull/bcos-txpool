@@ -121,8 +121,7 @@ TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
         return result;
     }
     ReadGuard l(x_txpoolMutex);
-    auto txIterator = m_txsQueue.emplace(_tx).first;
-    m_txsTable[_tx->hash()] = txIterator;
+    m_txsTable[_tx->hash()] = _tx;
     m_onReady();
     preCommitTransaction(_tx);
     return TransactionStatus::None;
@@ -187,10 +186,8 @@ Transaction::ConstPtr MemoryStorage::removeWithoutLock(bcos::crypto::HashType co
     {
         return nullptr;
     }
-    auto txIterator = m_txsTable[_txHash];
-    auto tx = *(txIterator);
+    auto tx = m_txsTable[_txHash];
     m_txsTable.unsafe_erase(_txHash);
-    m_txsQueue.unsafe_erase(txIterator);
     return tx;
 }
 
@@ -267,7 +264,7 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
         }
     }
     // update the ledger nonce
-    m_config->txPoolNonceChecker()->batchInsert(_batchId, nonceList);
+    m_config->txValidator()->ledgerNonceChecker()->batchInsert(_batchId, nonceList);
     // update the txpool nonce
     m_config->txPoolNonceChecker()->batchRemove(*nonceList);
 }
@@ -284,7 +281,7 @@ TransactionsPtr MemoryStorage::fetchTxs(HashList& _missedTxs, HashList const& _t
             _missedTxs.emplace_back(hash);
             continue;
         }
-        auto tx = *(m_txsTable[hash]);
+        auto tx = m_txsTable[hash];
         fetchedTxs->emplace_back(std::const_pointer_cast<Transaction>(tx));
     }
     return fetchedTxs;
@@ -294,8 +291,9 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 {
     ReadGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<ConstTransactions>();
-    for (auto tx : m_txsQueue)
+    for (auto const& it : m_txsTable)
     {
+        auto tx = it.second;
         if (tx->synced())
         {
             continue;
@@ -315,22 +313,20 @@ HashListPtr MemoryStorage::batchFetchTxs(
 {
     UpgradableGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<HashList>();
-    for (auto tx : m_txsQueue)
+    for (auto it : m_txsTable)
     {
-        if (_avoidDuplicate && tx->sealed())
-        {
-            continue;
-        }
+        auto tx = it.second;
         auto txHash = tx->hash();
         if (m_invalidTxs.count(txHash))
         {
             continue;
         }
-        auto result = m_config->txValidator()->duplicateTx(tx);
+        auto result = m_config->txValidator()->submittedToChain(tx);
         if (result == TransactionStatus::NonceCheckFail)
         {
             continue;
         }
+        // blockLimit expired
         if (result == TransactionStatus::BlockLimitCheckFail)
         {
             m_invalidTxs.insert(txHash);
@@ -341,10 +337,16 @@ HashListPtr MemoryStorage::batchFetchTxs(
         {
             continue;
         }
+        if (_avoidDuplicate && tx->sealed())
+        {
+            continue;
+        }
         fetchedTxs->emplace_back(tx->hash());
+        if (!tx->sealed())
+        {
+            m_sealedTxsSize++;
+        }
         tx->setSealed(true);
-        m_sealedTxsSize++;
-
         if (fetchedTxs->size() >= _txsLimit)
         {
             break;
@@ -384,10 +386,8 @@ void MemoryStorage::removeInvalidTxs()
                 },
                 [memoryStorage]() {
                     // remove invalid nonce
-                    for (auto const& nonce : memoryStorage->m_invalidNonces)
-                    {
-                        memoryStorage->m_config->txPoolNonceChecker()->remove(nonce);
-                    }
+                    memoryStorage->m_config->txPoolNonceChecker()->batchRemove(
+                        memoryStorage->m_invalidNonces);
                 });
             memoryStorage->m_invalidTxs.clear();
             memoryStorage->m_invalidNonces.clear();
@@ -403,9 +403,7 @@ void MemoryStorage::removeInvalidTxs()
 void MemoryStorage::clear()
 {
     WriteGuard l(x_txpoolMutex);
-    // Note: must clear m_txsTable firstly
     m_txsTable.clear();
-    m_txsQueue.clear();
 }
 
 HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeIDPtr _peer)
@@ -417,7 +415,7 @@ HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeID
         {
             continue;
         }
-        auto tx = *(m_txsTable[txHash]);
+        auto tx = m_txsTable[txHash];
         tx->appendKnownNode(_peer);
     }
     auto unknownTxsList = std::make_shared<HashList>();
@@ -454,8 +452,7 @@ void MemoryStorage::batchMarkTxs(bcos::crypto::HashList const& _txsHashList, boo
                                 << LOG_KV("tx", txHash.abridged()) << LOG_KV("sealFlag", _sealFlag);
             continue;
         }
-        auto tx = *(m_txsTable[txHash]);
-        tx->setSealed(_sealFlag);
+        auto tx = m_txsTable[txHash];
         if (_sealFlag && !tx->sealed())
         {
             m_sealedTxsSize++;
@@ -464,6 +461,7 @@ void MemoryStorage::batchMarkTxs(bcos::crypto::HashList const& _txsHashList, boo
         {
             m_sealedTxsSize--;
         }
+        tx->setSealed(_sealFlag);
     }
     notifyUnsealedTxsSize();
 }
