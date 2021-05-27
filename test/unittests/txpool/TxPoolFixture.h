@@ -28,11 +28,11 @@
 #include "libprotocol/protobuf/PBTransactionFactory.h"
 #include "libprotocol/protobuf/PBTransactionReceiptFactory.h"
 #include "sync/TransactionSync.h"
-#include "test/unittests/common/FakeFrontService.h"
-#include "test/unittests/common/FakeLedger.h"
-#include "test/unittests/common/FakeSealer.h"
 #include "txpool/validator/TxValidator.h"
 #include <bcos-framework/interfaces/consensus/ConsensusNode.h>
+#include <bcos-framework/testutils/faker/FakeFrontService.h>
+#include <bcos-framework/testutils/faker/FakeLedger.h>
+#include <bcos-framework/testutils/faker/FakeSealer.h>
 #include <boost/test/unit_test.hpp>
 #include <chrono>
 #include <thread>
