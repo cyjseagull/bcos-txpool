@@ -19,7 +19,7 @@
  * @date 2021-05-08
  */
 #pragma once
-#include "txpool/interfaces/NonceCheckerInterface.h"
+#include "NonceCheckerInterface.h"
 #include <bcos-framework/interfaces/protocol/Transaction.h>
 #include <bcos-framework/libprotocol/TransactionStatus.h>
 namespace bcos

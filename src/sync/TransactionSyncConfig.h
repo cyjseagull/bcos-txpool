@@ -19,7 +19,7 @@
  * @date 2021-05-11
  */
 #pragma once
-#include "txpool/interfaces/TxPoolStorageInterface.h"
+#include "../txpool/interfaces/TxPoolStorageInterface.h"
 #include <bcos-framework/interfaces/front/FrontServiceInterface.h>
 #include <bcos-framework/interfaces/ledger/LedgerInterface.h>
 #include <bcos-framework/interfaces/protocol/BlockFactory.h>

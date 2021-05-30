@@ -19,7 +19,7 @@
  * @date 2021-05-10
  */
 #pragma once
-#include "txpool/interfaces/NonceCheckerInterface.h"
+#include "../interfaces/NonceCheckerInterface.h"
 #include <tbb/concurrent_unordered_set.h>
 
 namespace bcos

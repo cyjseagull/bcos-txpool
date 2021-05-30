@@ -19,7 +19,7 @@
  * @date 2021-05-10
  */
 #pragma once
-#include "sync/TransactionSyncConfig.h"
+#include "../TransactionSyncConfig.h"
 #include <bcos-framework/interfaces/crypto/CommonType.h>
 #include <bcos-framework/interfaces/protocol/Block.h>
 

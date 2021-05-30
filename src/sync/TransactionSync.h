@@ -20,8 +20,8 @@
  */
 #pragma once
 
-#include "sync/TransactionSyncConfig.h"
-#include "sync/interfaces/TransactionSyncInterface.h"
+#include "TransactionSyncConfig.h"
+#include "interfaces/TransactionSyncInterface.h"
 #include <bcos-framework/interfaces/protocol/Protocol.h>
 #include <bcos-framework/libutilities/ThreadPool.h>
 #include <bcos-framework/libutilities/Worker.h>

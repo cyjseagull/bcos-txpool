@@ -19,8 +19,8 @@
  * @date 2021-05-11
  */
 #pragma once
-#include "txpool/interfaces/NonceCheckerInterface.h"
-#include "txpool/interfaces/TxValidatorInterface.h"
+#include "../interfaces/NonceCheckerInterface.h"
+#include "../interfaces/TxValidatorInterface.h"
 namespace bcos
 {
 namespace txpool

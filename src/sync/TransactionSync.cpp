@@ -19,7 +19,7 @@
  * @date 2021-05-11
  */
 #include "TransactionSync.h"
-#include "sync/utilities/Common.h"
+#include "utilities/Common.h"
 #include <bcos-framework/interfaces/protocol/CommonError.h>
 #include <bcos-framework/interfaces/protocol/Protocol.h>
 

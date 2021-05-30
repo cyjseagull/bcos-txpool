@@ -20,11 +20,11 @@
  */
 #include "TxPoolFactory.h"
 #include "TxPool.h"
-#include "sync/TransactionSync.h"
-#include "txpool/storage/MemoryStorage.h"
-#include "txpool/validator/LedgerNonceChecker.h"
-#include "txpool/validator/TxPoolNonceChecker.h"
-#include "txpool/validator/TxValidator.h"
+#include "../sync/TransactionSync.h"
+#include "storage/MemoryStorage.h"
+#include "validator/LedgerNonceChecker.h"
+#include "validator/TxPoolNonceChecker.h"
+#include "validator/TxValidator.h"
 #include <bcos-framework/libsync/protocol/PB/TxsSyncMsgFactoryImpl.h>
 #include <bcos-framework/libtool/LedgerConfigFetcher.h>
 
