@@ -22,14 +22,14 @@
 #include "TxPool.h"
 #include "TxPoolConfig.h"
 #include "TxPoolFactory.h"
-#include "libprotocol/TransactionSubmitResultFactoryImpl.h"
-#include "libprotocol/protobuf/PBBlockFactory.h"
-#include "libprotocol/protobuf/PBBlockHeaderFactory.h"
-#include "libprotocol/protobuf/PBTransactionFactory.h"
-#include "libprotocol/protobuf/PBTransactionReceiptFactory.h"
 #include "sync/TransactionSync.h"
 #include "txpool/validator/TxValidator.h"
 #include <bcos-framework/interfaces/consensus/ConsensusNode.h>
+#include <bcos-framework/libprotocol/TransactionSubmitResultFactoryImpl.h>
+#include <bcos-framework/libprotocol/protobuf/PBBlockFactory.h>
+#include <bcos-framework/libprotocol/protobuf/PBBlockHeaderFactory.h>
+#include <bcos-framework/libprotocol/protobuf/PBTransactionFactory.h>
+#include <bcos-framework/libprotocol/protobuf/PBTransactionReceiptFactory.h>
 #include <bcos-framework/testutils/faker/FakeFrontService.h>
 #include <bcos-framework/testutils/faker/FakeLedger.h>
 #include <bcos-framework/testutils/faker/FakeSealer.h>
@@ -71,13 +71,13 @@ class TxPoolFixture
 public:
     using Ptr = std::shared_ptr<TxPoolFixture>;
     TxPoolFixture(NodeIDPtr _nodeId, CryptoSuite::Ptr _cryptoSuite, std::string const& _groupId,
-        std::string const& _chainId, int64_t _blockLimit, FakeFrontService::Ptr _frontService)
+        std::string const& _chainId, int64_t _blockLimit, FakeGateWay::Ptr _fakeGateWay)
       : m_nodeId(_nodeId),
         m_cryptoSuite(_cryptoSuite),
         m_groupId(_groupId),
         m_chainId(_chainId),
         m_blockLimit(_blockLimit),
-        m_frontService(_frontService)
+        m_fakeGateWay(_fakeGateWay)
     {
         auto blockHeaderFactory = std::make_shared<PBBlockHeaderFactory>(_cryptoSuite);
         auto txFactory = std::make_shared<PBTransactionFactory>(_cryptoSuite);
@@ -87,13 +87,15 @@ public:
         m_txResultFactory = std::make_shared<TransactionSubmitResultFactoryImpl>();
         m_ledger = std::make_shared<FakeLedger>(m_blockFactory, 20, 10, 10);
 
+        m_frontService = std::make_shared<FakeFrontService>(_nodeId);
         m_txPoolFactory = std::make_shared<TxPoolFactory>(_nodeId, _cryptoSuite, m_txResultFactory,
             m_blockFactory, m_frontService, m_ledger, m_groupId, m_chainId, m_blockLimit);
         m_sealer = std::make_shared<FakeSealer>();
         m_txpool = std::dynamic_pointer_cast<TxPool>(m_txPoolFactory->txpool());
         m_sync = std::dynamic_pointer_cast<TransactionSync>(m_txpool->transactionSync());
 
-        m_frontService->addTxPool(_nodeId, m_txpool);
+        m_fakeGateWay->addTxPool(_nodeId, m_txpool);
+        m_frontService->setGateWay(m_fakeGateWay);
     }
     virtual ~TxPoolFixture() {}
 
@@ -150,6 +152,7 @@ private:
 
     FakeLedger::Ptr m_ledger;
     FakeFrontService::Ptr m_frontService;
+    FakeGateWay::Ptr m_fakeGateWay;
     TxPoolFactory::Ptr m_txPoolFactory;
     FakeSealer::Ptr m_sealer;
     TxPool::Ptr m_txpool;

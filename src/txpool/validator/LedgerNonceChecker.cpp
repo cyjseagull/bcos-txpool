@@ -82,7 +82,6 @@ void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceLi
     // remove the expired nonces
     if (!m_blockNonceCache.count(batchToBeRemoved))
     {
-        // TODO: request the ledger to get the missed cache(maybe this case is impossible)
         NONCECHECKER_LOG(FATAL) << LOG_DESC("batchInsert: miss cache when remove expired cache")
                                 << LOG_KV("batchToBeRemoved", batchToBeRemoved);
         return;

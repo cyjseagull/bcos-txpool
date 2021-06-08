@@ -43,7 +43,7 @@ public:
         m_worker(std::make_shared<ThreadPool>("sync", 1)),
         m_txsRequester(std::make_shared<ThreadPool>("txsRequester", 1))
     {
-        m_config->txpoolStorage()->onReady([&]() { this->noteNewTransactions(); });
+        m_txsSubmitted = m_config->txpoolStorage()->onReady([&]() { this->noteNewTransactions(); });
     }
 
     ~TransactionSync() {}
@@ -124,6 +124,8 @@ private:
     SharedMutex x_downloadTxsBuffer;
     ThreadPool::Ptr m_worker;
     ThreadPool::Ptr m_txsRequester;
+
+    bcos::Handler<> m_txsSubmitted;
 
     std::atomic_bool m_running = {false};
 

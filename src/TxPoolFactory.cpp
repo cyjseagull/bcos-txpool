@@ -101,5 +101,34 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     m_txsSyncConfig->setConsensusNodeList(ledgerConfig->consensusNodeList());
     m_txsSyncConfig->setObserverList(ledgerConfig->observerNodeList());
     TXPOOL_LOG(INFO) << LOG_DESC("init sync config success");
-    // TODO: fetch the connected nodeID from frontService
+
+    auto self = std::weak_ptr<TxPoolFactory>(shared_from_this());
+    m_txsSyncConfig->frontService()->asyncGetNodeIDs(
+        [self](Error::Ptr _error, std::shared_ptr<const crypto::NodeIDs> _nodeIDs) {
+            // TODO: retry
+            if (_error != nullptr)
+            {
+                TXPOOL_LOG(WARNING)
+                    << LOG_DESC("asyncGetNodeIDs failed") << LOG_KV("code", _error->errorCode())
+                    << LOG_KV("msg", _error->errorMessage());
+                return;
+            }
+            try
+            {
+                auto txpoolFactory = self.lock();
+                if (!txpoolFactory)
+                {
+                    return;
+                }
+                NodeIDSet nodeIdSet(_nodeIDs->begin(), _nodeIDs->end());
+                txpoolFactory->m_txsSyncConfig->setConnectedNodeList(std::move(nodeIdSet));
+                TXPOOL_LOG(INFO) << LOG_DESC("asyncGetNodeIDs")
+                                 << LOG_KV("connectedSize", _nodeIDs->size());
+            }
+            catch (std::exception const& e)
+            {
+                TXPOOL_LOG(WARNING) << LOG_DESC("asyncGetNodeIDs exception")
+                                    << LOG_KV("error", boost::diagnostic_information(e));
+            }
+        });
 }

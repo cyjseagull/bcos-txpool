@@ -61,7 +61,7 @@ void TransactionSync::executeWorker()
     {
         maintainDownloadingTransactions();
     }
-    if (m_config->existsInGroup() && m_newTransactions && downloadTxsBufferEmpty())
+    if (m_config->existsInGroup() && downloadTxsBufferEmpty() && m_newTransactions.load())
     {
         maintainTransactions();
     }
@@ -151,11 +151,12 @@ void TransactionSync::onReceiveTxsRequest(
     auto const& txsHash = _txsRequest->txsHash();
     HashList missedTxs;
     auto txs = m_config->txpoolStorage()->fetchTxs(missedTxs, txsHash);
-    // TODO: Note: here assume that all the transaction should be hit in the txpool
+    // Note: here assume that all the transaction should be hit in the txpool
     if (missedTxs.size() > 0)
     {
         SYNC_LOG(WARNING) << LOG_DESC("onReceiveTxsRequest: transaction missing")
-                          << LOG_KV("missedTxsSize", missedTxs.size());
+                          << LOG_KV("missedTxsSize", missedTxs.size())
+                          << LOG_KV("nodeId", m_config->nodeID()->shortHex());
     }
     // response the txs
     auto block = m_config->blockFactory()->createBlock();
@@ -321,14 +322,17 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     auto transactions = m_config->blockFactory()->createBlock(txsResponse->txsData(), true, false);
     if (_missedTxs->size() != transactions->transactionsSize())
     {
+        SYNC_LOG(WARNING) << LOG_DESC("verifyFetchedTxs failed")
+                          << LOG_KV("expectedTxs", _missedTxs->size())
+                          << LOG_KV("fetchedTxs", transactions->transactionsSize());
         // response the verify result
         _onVerifyFinished(
             std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),
             false);
+        // try to import the transactions even when verify failed
         importDownloadedTxs(_nodeID, transactions);
         return;
     }
-    // try to import the transactions even when verify failed
     if (!importDownloadedTxs(_nodeID, transactions))
     {
         _onVerifyFinished(std::make_shared<Error>(
@@ -451,6 +455,7 @@ void TransactionSync::maintainTransactions()
     auto txs = m_config->txpoolStorage()->fetchNewTxs(c_maxSendTransactions);
     if (txs->size() == 0)
     {
+        m_newTransactions = false;
         return;
     }
     broadcastTxsFromRpc(txs);

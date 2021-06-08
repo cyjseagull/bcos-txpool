@@ -284,9 +284,9 @@ void txPoolInitAndSubmitTransactionTest(bool _sm, CryptoSuite::Ptr _cryptoSuite)
     std::string groupId = "group_test_for_txpool";
     std::string chainId = "chain_test_for_txpool";
     int64_t blockLimit = 10;
-    auto frontService = std::make_shared<FakeFrontService>(keyPair->publicKey());
+    auto fakeGateWay = std::make_shared<FakeGateWay>();
     auto faker = std::make_shared<TxPoolFixture>(
-        keyPair->publicKey(), _cryptoSuite, groupId, chainId, blockLimit, frontService);
+        keyPair->publicKey(), _cryptoSuite, groupId, chainId, blockLimit, fakeGateWay);
     faker->init();
 
     // check the txpool config
@@ -399,7 +399,10 @@ void txPoolInitAndSubmitTransactionTest(bool _sm, CryptoSuite::Ptr _cryptoSuite)
     auto const& txsHash2Data = ledger->txsHashToData();
     for (size_t i = 0; i < transactions.size(); i++)
     {
-        BOOST_CHECK(txsHash2Data.count(transactions[i]->hash()));
+        while (!txsHash2Data.count(transactions[i]->hash()))
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
     }
     // case9: the txpool is full
     txpoolConfig->setPoolLimit(importedTxNum);

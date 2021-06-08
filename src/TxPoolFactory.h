@@ -26,7 +26,7 @@ namespace bcos
 {
 namespace txpool
 {
-class TxPoolFactory
+class TxPoolFactory : public std::enable_shared_from_this<TxPoolFactory>
 {
 public:
     using Ptr = std::shared_ptr<TxPoolFactory>;

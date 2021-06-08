@@ -124,6 +124,7 @@ TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
     m_txsTable[_tx->hash()] = _tx;
     m_onReady();
     preCommitTransaction(_tx);
+    notifyUnsealedTxsSize();
     return TransactionStatus::None;
 }
 
@@ -294,6 +295,12 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
     for (auto const& it : m_txsTable)
     {
         auto tx = it.second;
+        // Note: When inserting data into tbb::concurrent_unordered_map while traversing, it.second
+        // will occasionally be a null pointer.
+        if (!tx)
+        {
+            continue;
+        }
         if (tx->synced())
         {
             continue;
@@ -311,11 +318,17 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
 HashListPtr MemoryStorage::batchFetchTxs(
     size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
-    UpgradableGuard l(x_txpoolMutex);
+    ReadGuard l(x_txpoolMutex);
     auto fetchedTxs = std::make_shared<HashList>();
     for (auto it : m_txsTable)
     {
         auto tx = it.second;
+        // // Note: When inserting data into tbb::concurrent_unordered_map while traversing,
+        // it.second will occasionally be a null pointer.
+        if (!tx)
+        {
+            continue;
+        }
         auto txHash = tx->hash();
         if (m_invalidTxs.count(txHash))
         {
@@ -353,7 +366,6 @@ HashListPtr MemoryStorage::batchFetchTxs(
         }
     }
     notifyUnsealedTxsSize();
-    UpgradeGuard ul(l);
     removeInvalidTxs();
     return fetchedTxs;
 }
@@ -373,6 +385,7 @@ void MemoryStorage::removeInvalidTxs()
             {
                 return;
             }
+            WriteGuard l(memoryStorage->x_txpoolMutex);
             tbb::parallel_invoke(
                 [memoryStorage]() {
                     // remove invalid txs
@@ -475,6 +488,11 @@ size_t MemoryStorage::size() const
 size_t MemoryStorage::unSealedTxsSize()
 {
     ReadGuard l(x_txpoolMutex);
+    return unSealedTxsSizeWithoutLock();
+}
+
+size_t MemoryStorage::unSealedTxsSizeWithoutLock()
+{
     if (m_txsTable.size() < m_sealedTxsSize)
     {
         m_sealedTxsSize = m_txsTable.size();
@@ -485,7 +503,7 @@ size_t MemoryStorage::unSealedTxsSize()
 
 void MemoryStorage::notifyUnsealedTxsSize()
 {
-    auto unsealedTxsSize = unSealedTxsSize();
+    auto unsealedTxsSize = unSealedTxsSizeWithoutLock();
     m_config->sealer()->asyncNoteUnSealedTxsSize(unsealedTxsSize, [this](Error::Ptr _error) {
         if (_error == nullptr)
         {

@@ -70,7 +70,6 @@ public:
         return m_txsTable.count(_txHash);
     }
     size_t size() const override;
-    size_t unSealedTxsSize() override;
     void clear() override;
 
     bcos::crypto::HashListPtr filterUnknownTxs(
@@ -78,7 +77,10 @@ public:
 
     void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) override;
 
+    size_t unSealedTxsSize() override;
+
 protected:
+    size_t unSealedTxsSizeWithoutLock();
     bcos::protocol::TransactionStatus txpoolStorageCheck(bcos::protocol::Transaction::ConstPtr _tx);
 
     virtual bcos::protocol::Transaction::ConstPtr removeWithoutLock(
