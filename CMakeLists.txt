@@ -56,14 +56,13 @@ include(CopyClangFormat)
 
 include_directories(${CMAKE_INSTALL_INCLUDEDIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # install dependencies
 include(InstallBcosFrameworkDependencies)
 
 set(BCOS_TXPOOL_TARGET "bcos-txpool")
-add_subdirectory(src)
+add_subdirectory(bcos-txpool)
 include(InstallConfig)
 # install consensus target
 install(

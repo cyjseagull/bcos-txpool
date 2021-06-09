@@ -20,7 +20,7 @@
  */
 #include "TxPoolFactory.h"
 #include "TxPool.h"
-#include "../sync/TransactionSync.h"
+#include "bcos-txpool/sync/TransactionSync.h"
 #include "storage/MemoryStorage.h"
 #include "validator/LedgerNonceChecker.h"
 #include "validator/TxPoolNonceChecker.h"

@@ -19,11 +19,11 @@
  * @date 2021-05-25
  */
 #pragma once
-#include "TxPool.h"
-#include "TxPoolConfig.h"
-#include "TxPoolFactory.h"
-#include "sync/TransactionSync.h"
-#include "txpool/validator/TxValidator.h"
+#include "bcos-txpool/TxPool.h"
+#include "bcos-txpool/TxPoolConfig.h"
+#include "bcos-txpool/TxPoolFactory.h"
+#include "bcos-txpool/sync/TransactionSync.h"
+#include "bcos-txpool/txpool/validator/TxValidator.h"
 #include <bcos-framework/interfaces/consensus/ConsensusNode.h>
 #include <bcos-framework/libprotocol/TransactionSubmitResultFactoryImpl.h>
 #include <bcos-framework/libprotocol/protobuf/PBBlockFactory.h>

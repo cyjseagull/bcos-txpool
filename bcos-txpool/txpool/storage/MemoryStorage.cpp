@@ -18,7 +18,7 @@
  * @author: yujiechen
  * @date 2021-05-07
  */
-#include "MemoryStorage.h"
+#include "bcos-txpool/txpool/storage/MemoryStorage.h"
 #include <tbb/parallel_invoke.h>
 
 using namespace bcos;

@@ -18,9 +18,9 @@
  * @author: yujiechen
  * @date 2021-05-10
  */
-#include "TxPoolConfig.h"
-#include "sync/interfaces/TransactionSyncInterface.h"
-#include "txpool/interfaces/TxPoolStorageInterface.h"
+#include "bcos-txpool/TxPoolConfig.h"
+#include "bcos-txpool/sync/interfaces/TransactionSyncInterface.h"
+#include "bcos-txpool/txpool/interfaces/TxPoolStorageInterface.h"
 #include <bcos-framework/interfaces/txpool/TxPoolInterface.h>
 #include <bcos-framework/libutilities/ThreadPool.h>
 namespace bcos

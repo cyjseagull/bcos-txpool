@@ -19,7 +19,7 @@
  * @date 2021-05-10
  */
 #pragma once
-#include "TxPoolNonceChecker.h"
+#include "bcos-txpool/txpool/validator/TxPoolNonceChecker.h"
 #include <bcos-framework/interfaces/ledger/LedgerInterface.h>
 
 namespace bcos

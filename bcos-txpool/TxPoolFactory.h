@@ -19,8 +19,8 @@
  * @date 2021-05-19
  */
 #pragma once
-#include "TxPoolConfig.h"
-#include "sync/TransactionSyncConfig.h"
+#include "bcos-txpool/TxPoolConfig.h"
+#include "bcos-txpool/sync/TransactionSyncConfig.h"
 #include <bcos-framework/interfaces/txpool/TxPoolInterface.h>
 namespace bcos
 {

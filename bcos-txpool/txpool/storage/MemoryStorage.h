@@ -19,7 +19,7 @@
  * @date 2021-05-07
  */
 #pragma once
-#include "TxPoolConfig.h"
+#include "bcos-txpool/TxPoolConfig.h"
 #include <bcos-framework/libutilities/ThreadPool.h>
 #include <tbb/concurrent_unordered_map.h>
 #define TBB_PREVIEW_CONCURRENT_ORDERED_CONTAINERS 1

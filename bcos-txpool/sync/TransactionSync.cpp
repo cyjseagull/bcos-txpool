@@ -18,8 +18,8 @@
  * @author: yujiechen
  * @date 2021-05-11
  */
-#include "TransactionSync.h"
-#include "utilities/Common.h"
+#include "bcos-txpool/sync/TransactionSync.h"
+#include "bcos-txpool/sync/utilities/Common.h"
 #include <bcos-framework/interfaces/protocol/CommonError.h>
 #include <bcos-framework/interfaces/protocol/Protocol.h>
 
