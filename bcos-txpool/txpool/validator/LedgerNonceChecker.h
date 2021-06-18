@@ -29,11 +29,15 @@ namespace txpool
 class LedgerNonceChecker : public TxPoolNonceChecker
 {
 public:
-    LedgerNonceChecker(std::map<int64_t, bcos::protocol::NonceListPtr> const& _initialNonces,
+    LedgerNonceChecker(
+        std::shared_ptr<std::map<int64_t, bcos::protocol::NonceListPtr> > _initialNonces,
         bcos::protocol::BlockNumber _blockNumber, int64_t _blockLimit)
       : TxPoolNonceChecker(), m_blockNumber(_blockNumber), m_blockLimit(_blockLimit)
     {
-        initNonceCache(_initialNonces);
+        if (_initialNonces)
+        {
+            initNonceCache(*_initialNonces);
+        }
     }
     bcos::protocol::TransactionStatus checkNonce(
         bcos::protocol::Transaction::ConstPtr _tx, bool _shouldUpdate = false) override;

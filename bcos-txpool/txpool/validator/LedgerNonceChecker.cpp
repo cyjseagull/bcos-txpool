@@ -68,7 +68,7 @@ void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceLi
     }
     m_blockNumber.store(_batchId);
 
-    auto batchToBeRemoved = (_batchId > m_blockLimit) ? (_batchId - m_blockLimit) : 0;
+    ssize_t batchToBeRemoved = (_batchId > m_blockLimit) ? (_batchId - m_blockLimit) : -1;
     // insert the latest nonces
     TxPoolNonceChecker::batchInsert(_batchId, _nonceList);
 
@@ -79,11 +79,16 @@ void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceLi
         NONCECHECKER_LOG(DEBUG) << LOG_DESC("batchInsert nonceList") << LOG_KV("batchId", _batchId)
                                 << LOG_KV("nonceSize", _nonceList->size());
     }
+    // the genesis has no nonceList
+    if (batchToBeRemoved == -1)
+    {
+        return;
+    }
     // remove the expired nonces
     if (!m_blockNonceCache.count(batchToBeRemoved))
     {
-        NONCECHECKER_LOG(FATAL) << LOG_DESC("batchInsert: miss cache when remove expired cache")
-                                << LOG_KV("batchToBeRemoved", batchToBeRemoved);
+        NONCECHECKER_LOG(WARNING) << LOG_DESC("batchInsert: miss cache when remove expired cache")
+                                  << LOG_KV("batchToBeRemoved", batchToBeRemoved);
         return;
     }
     auto nonceList = m_blockNonceCache[batchToBeRemoved];

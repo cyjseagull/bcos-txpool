@@ -99,7 +99,7 @@ protected:
 
     virtual void preCommitTransaction(bcos::protocol::Transaction::ConstPtr _tx);
 
-    virtual void notifyUnsealedTxsSize();
+    virtual void notifyUnsealedTxsSize(size_t _retryTime = 0);
 
 private:
     TxPoolConfig::Ptr m_config;
@@ -118,6 +118,8 @@ private:
     tbb::concurrent_set<bcos::crypto::HashType> m_missedTxs;
     mutable SharedMutex x_missedTxs;
     std::atomic<size_t> m_sealedTxsSize = {0};
+
+    size_t c_maxRetryTime = 3;
 };
 }  // namespace txpool
 }  // namespace bcos

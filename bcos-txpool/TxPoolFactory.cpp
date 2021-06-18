@@ -80,17 +80,22 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     auto startNumber = (ledgerConfig->blockNumber() > m_blockLimit ?
                             (ledgerConfig->blockNumber() - m_blockLimit + 1) :
                             0);
-    auto toNumber = ledgerConfig->blockNumber();
-    TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces information")
-                     << LOG_KV("startNumber", startNumber) << LOG_KV("toNumber", toNumber);
-    ledgerConfigFetcher->fetchNonceList(startNumber, m_blockLimit);
+    if (startNumber > 0)
+    {
+        auto toNumber = ledgerConfig->blockNumber();
+        auto fetchedSize = std::min(m_blockLimit, (toNumber - startNumber + 1));
+        TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces information")
+                         << LOG_KV("startNumber", startNumber)
+                         << LOG_KV("fetchedSize", fetchedSize);
+        ledgerConfigFetcher->fetchNonceList(startNumber, fetchedSize);
+    }
     ledgerConfigFetcher->waitFetchFinished();
     TXPOOL_LOG(INFO) << LOG_DESC("fetch history nonces success");
 
     // create LedgerNonceChecker and set it into the validator
     TXPOOL_LOG(INFO) << LOG_DESC("init txs validator");
     auto ledgerNonceChecker = std::make_shared<LedgerNonceChecker>(
-        *(ledgerConfigFetcher->nonceList()), ledgerConfig->blockNumber(), m_blockLimit);
+        ledgerConfigFetcher->nonceList(), ledgerConfig->blockNumber(), m_blockLimit);
 
     auto validator = std::dynamic_pointer_cast<TxValidator>(m_txpoolConfig->txValidator());
     validator->setLedgerNonceChecker(ledgerNonceChecker);
@@ -115,6 +120,10 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
             }
             try
             {
+                if (!_nodeIDs || _nodeIDs->size() == 0)
+                {
+                    return;
+                }
                 auto txpoolFactory = self.lock();
                 if (!txpoolFactory)
                 {

@@ -53,7 +53,7 @@ public:
 
     using SendResponseCallback = std::function<void(bytesConstRef _respData)>;
     void onRecvSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
-        bytesPointer _data, SendResponseCallback _sendResponse) override;
+        bytesConstRef _data, SendResponseCallback _sendResponse) override;
 
     using VerifyResponseCallback = std::function<void(Error::Ptr, bool)>;
     void requestMissedTxs(bcos::crypto::PublicPtr _generatedNodeID,

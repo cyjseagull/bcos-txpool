@@ -94,37 +94,56 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     };
 
     auto block = m_config->blockFactory()->createBlock(_block);
-    m_worker->enqueue([this, _generatedNodeID, block, onVerifyFinishedWrapper]() {
-        size_t txsSize = block->transactionsHashSize();
-        if (txsSize == 0)
+    auto self = std::weak_ptr<TxPool>(shared_from_this());
+    m_worker->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
+        try
         {
-            onVerifyFinishedWrapper(nullptr, true);
-            return;
-        }
-        auto missedTxs = std::make_shared<HashList>();
-        for (size_t i = 0; i < txsSize; i++)
-        {
-            auto const& txHash = block->transactionHash(i);
-            if (!m_txpoolStorage->exist(txHash))
+            auto txpool = self.lock();
+            if (!txpool)
             {
-                missedTxs->emplace_back(txHash);
+                onVerifyFinishedWrapper(
+                    std::make_shared<Error>(-1, "asyncVerifyBlock failed for lock txpool failed"),
+                    false);
+                return;
             }
+            size_t txsSize = block->transactionsHashSize();
+            if (txsSize == 0)
+            {
+                onVerifyFinishedWrapper(nullptr, true);
+                return;
+            }
+            auto missedTxs = std::make_shared<HashList>();
+            auto txpoolStorage = txpool->m_txpoolStorage;
+            for (size_t i = 0; i < txsSize; i++)
+            {
+                auto txHash = block->transactionHash(i);
+                if (!(txpoolStorage->exist(txHash)))
+                {
+                    missedTxs->emplace_back(txHash);
+                }
+            }
+            if (missedTxs->size() == 0)
+            {
+                TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock: hit all transactions in txpool")
+                                  << LOG_KV("nodeId",
+                                         txpool->m_transactionSync->config()->nodeID()->shortHex());
+                onVerifyFinishedWrapper(nullptr, true);
+                return;
+            }
+            TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock") << LOG_KV("totalTxs", txsSize)
+                              << LOG_KV("missedTxs", missedTxs->size());
+            txpool->m_transactionSync->requestMissedTxs(
+                _generatedNodeID, missedTxs, onVerifyFinishedWrapper);
         }
-        if (missedTxs->size() == 0)
+        catch (std::exception const& e)
         {
-            TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock: hit all transactions in txpool")
-                              << LOG_KV(
-                                     "nodeId", m_transactionSync->config()->nodeID()->shortHex());
-            onVerifyFinishedWrapper(nullptr, true);
-            return;
+            TXPOOL_LOG(WARNING) << LOG_DESC("asyncVerifyBlock exception")
+                                << LOG_KV("error", boost::diagnostic_information(e));
         }
-        TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock") << LOG_KV("totalTxs", txsSize)
-                          << LOG_KV("missedTxs", missedTxs->size());
-        m_transactionSync->requestMissedTxs(_generatedNodeID, missedTxs, onVerifyFinishedWrapper);
     });
 }
 
-void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, bytesPointer _data,
+void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data,
     std::function<void(bytesConstRef _respData)> _sendResponse,
     std::function<void(Error::Ptr _error)> _onRecv)
 {

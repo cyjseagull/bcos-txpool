@@ -42,6 +42,7 @@ public:
     virtual void init(bcos::sealer::SealerInterface::Ptr _sealer);
 
     TxPoolInterface::Ptr txpool() { return m_txpool; }
+    TxPoolConfig::Ptr txpoolConfig() { return m_txpoolConfig; }
 
 private:
     TxPoolInterface::Ptr m_txpool;

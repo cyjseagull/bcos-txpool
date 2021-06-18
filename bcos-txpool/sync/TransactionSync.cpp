@@ -73,7 +73,7 @@ void TransactionSync::executeWorker()
 }
 
 void TransactionSync::onRecvSyncMessage(
-    Error::Ptr _error, NodeIDPtr _nodeID, bytesPointer _data, SendResponseCallback _sendResponse)
+    Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data, SendResponseCallback _sendResponse)
 {
     try
     {
@@ -84,7 +84,7 @@ void TransactionSync::onRecvSyncMessage(
                               << LOG_KV("errorMsg", _error->errorMessage());
             return;
         }
-        auto txsSyncMsg = m_config->msgFactory()->createTxsSyncMsg(ref(*_data));
+        auto txsSyncMsg = m_config->msgFactory()->createTxsSyncMsg(_data);
         // receive transactions
         if (txsSyncMsg->type() == TxsSyncPacketType::TxsPacket)
         {
@@ -405,6 +405,10 @@ bool TransactionSync::importDownloadedTxs(NodeIDPtr _fromNode, TransactionsPtr _
             for (size_t i = _r.begin(); i < _r.end(); i++)
             {
                 auto tx = (*_txs)[i];
+                if (!tx)
+                {
+                    continue;
+                }
                 tx->appendKnownNode(_fromNode);
                 if (m_config->txpoolStorage()->exist(tx->hash()))
                 {

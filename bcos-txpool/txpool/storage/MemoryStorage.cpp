@@ -261,7 +261,14 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
         for (auto txResult : _txsResult)
         {
             auto tx = removeSubmittedTxWithoutLock(txResult);
-            nonceList->emplace_back(tx->nonce());
+            if (!tx && txResult->nonce() != NonceType(-1))
+            {
+                nonceList->emplace_back(txResult->nonce());
+            }
+            if (tx)
+            {
+                nonceList->emplace_back(tx->nonce());
+            }
         }
     }
     // update the ledger nonce
@@ -501,17 +508,22 @@ size_t MemoryStorage::unSealedTxsSizeWithoutLock()
     return (m_txsTable.size() - m_sealedTxsSize);
 }
 
-void MemoryStorage::notifyUnsealedTxsSize()
+void MemoryStorage::notifyUnsealedTxsSize(size_t _retryTime)
 {
     auto unsealedTxsSize = unSealedTxsSizeWithoutLock();
-    m_config->sealer()->asyncNoteUnSealedTxsSize(unsealedTxsSize, [this](Error::Ptr _error) {
-        if (_error == nullptr)
-        {
-            return;
-        }
-        TXPOOL_LOG(WARNING) << LOG_DESC("notifyUnsealedTxsSize failed, retry again")
-                            << LOG_KV("errorCode", _error->errorCode())
-                            << LOG_KV("errorMsg", _error->errorMessage());
-        this->notifyUnsealedTxsSize();
-    });
+    m_config->sealer()->asyncNoteUnSealedTxsSize(
+        unsealedTxsSize, [_retryTime, this](Error::Ptr _error) {
+            if (_error == nullptr)
+            {
+                return;
+            }
+            TXPOOL_LOG(WARNING) << LOG_DESC("notifyUnsealedTxsSize failed")
+                                << LOG_KV("errorCode", _error->errorCode())
+                                << LOG_KV("errorMsg", _error->errorMessage());
+            if (_retryTime >= c_maxRetryTime)
+            {
+                return;
+            }
+            this->notifyUnsealedTxsSize((_retryTime + 1));
+        });
 }
