@@ -56,10 +56,6 @@ TransactionStatus MemoryStorage::submitTransaction(
 
 TransactionStatus MemoryStorage::txpoolStorageCheck(Transaction::ConstPtr _tx)
 {
-    if (size() >= m_config->poolLimit())
-    {
-        return TransactionStatus::TxPoolIsFull;
-    }
     auto txHash = _tx->hash();
     if (exist(txHash))
     {
@@ -69,8 +65,13 @@ TransactionStatus MemoryStorage::txpoolStorageCheck(Transaction::ConstPtr _tx)
 }
 
 TransactionStatus MemoryStorage::submitTransaction(
-    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
+    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback, bool _enforceImport)
 {
+    if (size() >= m_config->poolLimit() && !_enforceImport)
+    {
+        return TransactionStatus::TxPoolIsFull;
+    }
+
     if (_txSubmitCallback)
     {
         _tx->setSubmitCallback(_txSubmitCallback);
@@ -115,11 +116,6 @@ void MemoryStorage::notifyInvalidReceipt(
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
-    auto result = txpoolStorageCheck(_tx);
-    if (result != TransactionStatus::None)
-    {
-        return result;
-    }
     ReadGuard l(x_txpoolMutex);
     m_txsTable[_tx->hash()] = _tx;
     m_onReady();
