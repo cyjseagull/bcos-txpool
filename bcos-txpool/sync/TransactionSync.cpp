@@ -333,8 +333,8 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     }
     if (!importDownloadedTxs(_nodeID, transactions, _enforceImport))
     {
-        _onVerifyFinished(std::make_shared<Error>(
-                              CommonError::TxsSignatureVerifyFailed, "TxsSignatureVerifyFailed"),
+        _onVerifyFinished(std::make_shared<Error>(CommonError::TxsSignatureVerifyFailed,
+                              "invalid transaction for invalid signature or nonce or blockLimit"),
             false);
         return;
     }
@@ -445,7 +445,11 @@ bool TransactionSync::importDownloadedTxs(
             std::const_pointer_cast<Transaction>(tx), nullptr, enforceImport);
         if (result != TransactionStatus::None)
         {
-            SYNC_LOG(TRACE) << LOG_BADGE("importDownloadedTxs")
+            if (_enforceImport && !m_config->txpoolStorage()->exist(tx->hash()))
+            {
+                verifySuccess = false;
+            }
+            SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs")
                             << LOG_DESC("Import transaction into txpool failed")
                             << LOG_KV("errorCode", result) << LOG_KV("tx", tx->hash().abridged());
             continue;

@@ -71,11 +71,11 @@ TransactionStatus MemoryStorage::submitTransaction(
     {
         return TransactionStatus::TxPoolIsFull;
     }
-
     if (_txSubmitCallback)
     {
         _tx->setSubmitCallback(_txSubmitCallback);
     }
+
     auto result = txpoolStorageCheck(_tx);
     if (result != TransactionStatus::None)
     {
@@ -116,6 +116,13 @@ void MemoryStorage::notifyInvalidReceipt(
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
+    // compare with nonces cached in memory
+    // Note: this must be the last check for updating the txPoolNonceChecker
+    auto status = m_config->txPoolNonceChecker()->checkNonce(_tx, true);
+    if (status != TransactionStatus::None)
+    {
+        return status;
+    }
     ReadGuard l(x_txpoolMutex);
     m_txsTable[_tx->hash()] = _tx;
     m_onReady();
@@ -261,7 +268,7 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
             {
                 nonceList->emplace_back(txResult->nonce());
             }
-            if (tx)
+            else if (tx)
             {
                 nonceList->emplace_back(tx->nonce());
             }
