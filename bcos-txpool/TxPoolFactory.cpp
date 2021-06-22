@@ -110,7 +110,6 @@ void TxPoolFactory::init(bcos::sealer::SealerInterface::Ptr _sealer)
     auto self = std::weak_ptr<TxPoolFactory>(shared_from_this());
     m_txsSyncConfig->frontService()->asyncGetNodeIDs(
         [self](Error::Ptr _error, std::shared_ptr<const crypto::NodeIDs> _nodeIDs) {
-            // TODO: retry
             if (_error != nullptr)
             {
                 TXPOOL_LOG(WARNING)

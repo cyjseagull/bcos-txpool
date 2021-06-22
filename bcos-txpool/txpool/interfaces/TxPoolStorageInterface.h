@@ -63,8 +63,9 @@ public:
      * @return List of new transactions
      */
     virtual bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) = 0;
-    virtual bcos::crypto::HashListPtr batchFetchTxs(
-        size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) = 0;
+    virtual void batchFetchTxs(bcos::crypto::HashListPtr _txsList,
+        bcos::crypto::HashListPtr _sysTxsList, size_t _txsLimit, TxsHashSetPtr _avoidTxs,
+        bool _avoidDuplicate = true) = 0;
 
     virtual bool exist(bcos::crypto::HashType const& _txHash) = 0;
 

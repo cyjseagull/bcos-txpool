@@ -33,6 +33,12 @@ struct TransactionCompare
     bool operator()(bcos::protocol::Transaction::ConstPtr _first,
         bcos::protocol::Transaction::ConstPtr _second) const
     {
+        // high priority for system transactions
+        if (_first->systemTx() && !_second->systemTx())
+        {
+            return true;
+        }
+        // sort by importTime in ascending order
         return _first->importTime() <= _second->importTime();
     }
 };
@@ -62,7 +68,7 @@ public:
         bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) override;
 
     bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;
-    bcos::crypto::HashListPtr batchFetchTxs(
+    void batchFetchTxs(bcos::crypto::HashListPtr _txsList, bcos::crypto::HashListPtr _sysTxsList,
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
     bool exist(bcos::crypto::HashType const& _txHash) override

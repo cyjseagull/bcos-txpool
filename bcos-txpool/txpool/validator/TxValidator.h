@@ -21,6 +21,8 @@
 #pragma once
 #include "bcos-txpool/txpool/interfaces/NonceCheckerInterface.h"
 #include "bcos-txpool/txpool/interfaces/TxValidatorInterface.h"
+#include <bcos-framework/interfaces/executor/PrecompiledTypeDef.h>
+#include <bcos-framework/libutilities/DataConvertUtility.h>
 namespace bcos
 {
 namespace txpool
@@ -43,11 +45,21 @@ public:
     bcos::protocol::TransactionStatus submittedToChain(
         bcos::protocol::Transaction::ConstPtr _tx) override;
 
+protected:
+    virtual bool isSystemTransaction(bcos::protocol::Transaction::ConstPtr _tx)
+    {
+        auto txAddress = _tx->to();
+        return m_systemTxsAddress.count(std::string(txAddress.begin(), txAddress.end()));
+    }
+
 private:
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
     bcos::crypto::CryptoSuite::Ptr m_cryptoSuite;
     std::string m_groupId;
     std::string m_chainId;
+
+    const std::set<std::string> m_systemTxsAddress = {bcos::precompiled::SYS_CONFIG_ADDRESS,
+        bcos::precompiled::CONSENSUS_ADDRESS, bcos::precompiled::WORKING_SEALER_MGR_ADDRESS};
 };
 }  // namespace txpool
 }  // namespace bcos

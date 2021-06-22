@@ -50,7 +50,8 @@ void importTransactions(size_t _txsNum, CryptoSuite::Ptr _cryptoSuite, TxPoolFix
         txpool->asyncSubmit(
             txData, [&](Error::Ptr, TransactionSubmitResult::Ptr) {}, nullptr);
     }
-    while (txpool->txpoolStorage()->size() < _txsNum)
+    auto startT = utcTime();
+    while (txpool->txpoolStorage()->size() < _txsNum && (utcTime() - startT <= 10000))
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
@@ -106,7 +107,9 @@ void testTransactionSync(bool _onlyTxsStatus = false)
         {
             // all the peers has received the txsStatus, and fetch txs from other peers
             BOOST_CHECK(faker->frontService()->getAsyncSendSizeByNodeID(txpoolPeer->nodeID()) >= 1);
-            while (txpoolPeer->txpool()->txpoolStorage()->size() < txsNum)
+            auto startT = utcTime();
+            while (txpoolPeer->txpool()->txpoolStorage()->size() < txsNum &&
+                   (utcTime() - startT <= 10000))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(2));
             }
@@ -124,7 +127,9 @@ void testTransactionSync(bool _onlyTxsStatus = false)
     {
         BOOST_CHECK(faker->frontService()->getAsyncSendSizeByNodeID(txpoolPeer->nodeID()) >= 1);
         txpoolPeer->sync()->maintainDownloadingTransactions();
-        while (txpoolPeer->txpool()->txpoolStorage()->size() < txsNum)
+        auto startT = utcTime();
+        while (
+            txpoolPeer->txpool()->txpoolStorage()->size() < txsNum && (utcTime() - startT <= 10000))
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
@@ -171,7 +176,7 @@ void testTransactionSync(bool _onlyTxsStatus = false)
     HashListPtr txsHash;
     bool finish = false;
     syncPeer->txpool()->asyncSealTxs(
-        100000, nullptr, [&](Error::Ptr _error, HashListPtr _fetchedTxs) {
+        100000, nullptr, [&](Error::Ptr _error, HashListPtr _fetchedTxs, HashListPtr) {
             BOOST_CHECK(_error == nullptr);
             // BOOST_CHECK(_fetchedTxs->size() == syncPeer->txpool()->txpoolStorage()->size());
             txsHash = _fetchedTxs;

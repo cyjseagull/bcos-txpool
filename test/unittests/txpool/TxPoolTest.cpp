@@ -151,38 +151,41 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     size_t txsLimit = 10;
     HashListPtr sealedTxs;
     bool finish = false;
-    _txpool->asyncSealTxs(txsLimit, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash) {
-        BOOST_CHECK(_error == nullptr);
-        BOOST_CHECK(_txsHash->size() == txsLimit);
-        sealedTxs = _txsHash;
-        // check the txpool has notified the unsealed txsSize to the sealer
-        std::cout << "###### unSealedTxsSize: " << _faker->sealer()->unSealedTxsSize() << std::endl;
-        std::cout << "###### originTxsSize: " << originTxsSize << std::endl;
-        BOOST_CHECK(_faker->sealer()->unSealedTxsSize() ==
-                    (originTxsSize > txsLimit ? (originTxsSize - txsLimit) : 0));
-        BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
-        BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
-        finish = true;
-    });
+    _txpool->asyncSealTxs(
+        txsLimit, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+            BOOST_CHECK(_error == nullptr);
+            BOOST_CHECK(_txsHash->size() == txsLimit);
+            sealedTxs = _txsHash;
+            // check the txpool has notified the unsealed txsSize to the sealer
+            std::cout << "###### unSealedTxsSize: " << _faker->sealer()->unSealedTxsSize()
+                      << std::endl;
+            std::cout << "###### originTxsSize: " << originTxsSize << std::endl;
+            BOOST_CHECK(_faker->sealer()->unSealedTxsSize() ==
+                        (originTxsSize > txsLimit ? (originTxsSize - txsLimit) : 0));
+            BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
+            BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
+            finish = true;
+        });
     while (!finish)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     // seal again to fetch all unsealed txs
     finish = false;
-    _txpool->asyncSealTxs(100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash) {
-        BOOST_CHECK(_error == nullptr);
-        BOOST_CHECK(_txsHash->size() == originTxsSize - txsLimit);
-        BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
-        BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
-        BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
-        std::set<HashType> txsSet(sealedTxs->begin(), sealedTxs->end());
-        for (auto const& hash : *_txsHash)
-        {
-            BOOST_CHECK(!txsSet.count(hash));
-        }
-        finish = true;
-    });
+    _txpool->asyncSealTxs(
+        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+            BOOST_CHECK(_error == nullptr);
+            BOOST_CHECK(_txsHash->size() == originTxsSize - txsLimit);
+            BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
+            BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
+            BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
+            std::set<HashType> txsSet(sealedTxs->begin(), sealedTxs->end());
+            for (auto const& hash : *_txsHash)
+            {
+                BOOST_CHECK(!txsSet.count(hash));
+            }
+            finish = true;
+        });
     while (!finish)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -202,13 +205,14 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
 
     // seal again
     finish = false;
-    _txpool->asyncSealTxs(100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash) {
-        BOOST_CHECK(_error == nullptr);
-        BOOST_CHECK(_txsHash->size() == sealedTxs->size());
-        BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
-        BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
-        finish = true;
-    });
+    _txpool->asyncSealTxs(
+        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+            BOOST_CHECK(_error == nullptr);
+            BOOST_CHECK(_txsHash->size() == sealedTxs->size());
+            BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
+            BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
+            finish = true;
+        });
     while (!finish)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -262,13 +266,14 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     std::cout << "######### ayncSeal with invalid blocklimit" << std::endl;
     std::cout << "##### origin txsSize:" << _txpoolStorage->size() << std::endl;
 
-    _txpool->asyncSealTxs(100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash) {
-        BOOST_CHECK(_error == nullptr);
-        BOOST_CHECK(_txsHash->size() == 0);
-        BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
-        BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
-        finish = true;
-    });
+    _txpool->asyncSealTxs(
+        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+            BOOST_CHECK(_error == nullptr);
+            BOOST_CHECK(_txsHash->size() == 0);
+            BOOST_CHECK(_faker->sealer()->unSealedTxsSize() == 0);
+            BOOST_CHECK(_txpoolStorage->unSealedTxsSize() == _faker->sealer()->unSealedTxsSize());
+            finish = true;
+        });
     while (!finish || (_txpoolStorage->size() > 0))
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));

@@ -83,9 +83,9 @@ TransactionStatus MemoryStorage::submitTransaction(
     }
     // verify the transaction
     result = m_config->txValidator()->verify(_tx);
-    _tx->setImportTime(utcTime());
     if (result == TransactionStatus::None)
     {
+        _tx->setImportTime(utcTime());
         result = insert(_tx);
         {
             WriteGuard l(x_missedTxs);
@@ -325,11 +325,10 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
     return fetchedTxs;
 }
 
-HashListPtr MemoryStorage::batchFetchTxs(
-    size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
+void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList, size_t _txsLimit,
+    TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
     ReadGuard l(x_txpoolMutex);
-    auto fetchedTxs = std::make_shared<HashList>();
     for (auto it : m_txsTable)
     {
         auto tx = it.second;
@@ -364,20 +363,26 @@ HashListPtr MemoryStorage::batchFetchTxs(
         {
             continue;
         }
-        fetchedTxs->emplace_back(tx->hash());
+        if (tx->systemTx())
+        {
+            _sysTxsList->emplace_back(tx->hash());
+        }
+        else
+        {
+            _txsList->emplace_back(tx->hash());
+        }
         if (!tx->sealed())
         {
             m_sealedTxsSize++;
         }
         tx->setSealed(true);
-        if (fetchedTxs->size() >= _txsLimit)
+        if ((_txsList->size() + _sysTxsList->size()) >= _txsLimit)
         {
             break;
         }
     }
     notifyUnsealedTxsSize();
     removeInvalidTxs();
-    return fetchedTxs;
 }
 
 void MemoryStorage::removeInvalidTxs()

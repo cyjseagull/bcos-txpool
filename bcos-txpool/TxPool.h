@@ -47,7 +47,8 @@ public:
         std::function<void(Error::Ptr)> _onRecv) override;
 
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
-        std::function<void(Error::Ptr, bcos::crypto::HashListPtr)> _sealCallback) override;
+        std::function<void(Error::Ptr, bcos::crypto::HashListPtr, bcos::crypto::HashListPtr)>
+            _sealCallback) override;
 
     void asyncNotifyBlockResult(bcos::protocol::BlockNumber _blockNumber,
         bcos::protocol::TransactionSubmitResultsPtr _txsResult,

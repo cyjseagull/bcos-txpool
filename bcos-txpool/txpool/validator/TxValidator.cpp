@@ -53,6 +53,10 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     {
         return TransactionStatus::InvalidSignature;
     }
+    if (isSystemTransaction(_tx))
+    {
+        _tx->setSystemTx(true);
+    }
     return TransactionStatus::None;
 }
 
