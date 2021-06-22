@@ -444,6 +444,10 @@ HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeID
             continue;
         }
         auto tx = m_txsTable[txHash];
+        if (!tx)
+        {
+            continue;
+        }
         tx->appendKnownNode(_peer);
     }
     auto unknownTxsList = std::make_shared<HashList>();
