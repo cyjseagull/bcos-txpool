@@ -209,7 +209,12 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
         return _missedTxs.size();
     }
     // import and verify the transactions
-    auto ret = this->importDownloadedTxs(m_config->nodeID(), _fetchedTxs);
+    bool enforceImport = false;
+    if (_onVerifyFinished)
+    {
+        enforceImport = true;
+    }
+    auto ret = this->importDownloadedTxs(m_config->nodeID(), _fetchedTxs, enforceImport);
     if (!ret)
     {
         SYNC_LOG(WARNING) << LOG_DESC("onGetMissedTxsFromLedger: verify tx failed");
