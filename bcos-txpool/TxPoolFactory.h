@@ -19,6 +19,7 @@
  * @date 2021-05-19
  */
 #pragma once
+#include "bcos-txpool/TxPool.h"
 #include "bcos-txpool/TxPoolConfig.h"
 #include "bcos-txpool/sync/TransactionSyncConfig.h"
 #include <bcos-framework/interfaces/txpool/TxPoolInterface.h>
@@ -26,7 +27,7 @@ namespace bcos
 {
 namespace txpool
 {
-class TxPoolFactory : public std::enable_shared_from_this<TxPoolFactory>
+class TxPoolFactory
 {
 public:
     using Ptr = std::shared_ptr<TxPoolFactory>;
@@ -38,16 +39,17 @@ public:
         std::string const& _chainId, int64_t _blockLimit);
 
     virtual ~TxPoolFactory() {}
-
-    virtual void init(bcos::sealer::SealerInterface::Ptr _sealer);
-
-    TxPoolInterface::Ptr txpool() { return m_txpool; }
-    TxPoolConfig::Ptr txpoolConfig() { return m_txpoolConfig; }
+    TxPool::Ptr createTxPool();
 
 private:
-    TxPoolInterface::Ptr m_txpool;
-    TxPoolConfig::Ptr m_txpoolConfig;
-    bcos::sync::TransactionSyncConfig::Ptr m_txsSyncConfig;
+    bcos::crypto::NodeIDPtr m_nodeId;
+    bcos::crypto::CryptoSuite::Ptr m_cryptoSuite;
+    bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
+    bcos::protocol::BlockFactory::Ptr m_blockFactory;
+    bcos::front::FrontServiceInterface::Ptr m_frontService;
+    std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
+    std::string m_groupId;
+    std::string m_chainId;
     int64_t m_blockLimit = 1000;
 };
 }  // namespace txpool

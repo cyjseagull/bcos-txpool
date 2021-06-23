@@ -39,12 +39,13 @@ public:
         bcos::protocol::TransactionSubmitResultFactory::Ptr _txResultFactory,
         bcos::protocol::BlockFactory::Ptr _blockFactory,
         std::shared_ptr<bcos::ledger::LedgerInterface> _ledger,
-        NonceCheckerInterface::Ptr _txpoolNonceChecker)
+        NonceCheckerInterface::Ptr _txpoolNonceChecker, int64_t _blockLimit = 1000)
       : m_txValidator(_txValidator),
         m_txResultFactory(_txResultFactory),
         m_blockFactory(_blockFactory),
         m_ledger(_ledger),
-        m_txPoolNonceChecker(_txpoolNonceChecker)
+        m_txPoolNonceChecker(_txpoolNonceChecker),
+        m_blockLimit(_blockLimit)
     {}
 
     virtual ~TxPoolConfig() {}
@@ -87,6 +88,8 @@ public:
     bcos::sealer::SealerInterface::Ptr sealer() { return m_sealer; }
     void setSealer(bcos::sealer::SealerInterface::Ptr _sealer) { m_sealer = _sealer; }
 
+    int64_t blockLimit() const { return m_blockLimit; }
+
 private:
     TxValidatorInterface::Ptr m_txValidator;
     bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
@@ -97,6 +100,7 @@ private:
     size_t m_poolLimit = 15000;
     size_t m_notifierWorkerNum = 1;
     size_t m_verifyWorkerNum = 1;
+    int64_t m_blockLimit = 1000;
 };
 }  // namespace txpool
 }  // namespace bcos

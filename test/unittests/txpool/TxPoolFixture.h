@@ -19,7 +19,6 @@
  * @date 2021-05-25
  */
 #pragma once
-#include "bcos-txpool/TxPool.h"
 #include "bcos-txpool/TxPoolConfig.h"
 #include "bcos-txpool/TxPoolFactory.h"
 #include "bcos-txpool/sync/TransactionSync.h"
@@ -88,10 +87,11 @@ public:
         m_ledger = std::make_shared<FakeLedger>(m_blockFactory, 20, 10, 10);
 
         m_frontService = std::make_shared<FakeFrontService>(_nodeId);
-        m_txPoolFactory = std::make_shared<TxPoolFactory>(_nodeId, _cryptoSuite, m_txResultFactory,
-            m_blockFactory, m_frontService, m_ledger, m_groupId, m_chainId, m_blockLimit);
+        auto txPoolFactory =
+            std::make_shared<TxPoolFactory>(_nodeId, _cryptoSuite, m_txResultFactory,
+                m_blockFactory, m_frontService, m_ledger, m_groupId, m_chainId, m_blockLimit);
         m_sealer = std::make_shared<FakeSealer>();
-        m_txpool = std::dynamic_pointer_cast<TxPool>(m_txPoolFactory->txpool());
+        m_txpool = txPoolFactory->createTxPool();
         m_sync = std::dynamic_pointer_cast<TransactionSync>(m_txpool->transactionSync());
 
         m_fakeGateWay->addTxPool(_nodeId, m_txpool);
@@ -99,7 +99,6 @@ public:
     }
     virtual ~TxPoolFixture() {}
 
-    TxPoolFactory::Ptr txPoolFactory() { return m_txPoolFactory; }
     TxPool::Ptr txpool() { return m_txpool; }
     FakeLedger::Ptr ledger() { return m_ledger; }
     NodeIDPtr nodeID() { return m_nodeId; }
@@ -118,7 +117,7 @@ public:
     void init()
     {
         // init the txpool
-        m_txPoolFactory->init(m_sealer);
+        m_txpool->init(m_sealer);
     }
 
     void resetToFakeTransactionSync()
@@ -153,7 +152,6 @@ private:
     FakeLedger::Ptr m_ledger;
     FakeFrontService::Ptr m_frontService;
     FakeGateWay::Ptr m_fakeGateWay;
-    TxPoolFactory::Ptr m_txPoolFactory;
     FakeSealer::Ptr m_sealer;
     TxPool::Ptr m_txpool;
     TransactionSync::Ptr m_sync;
