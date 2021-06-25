@@ -434,16 +434,19 @@ bool TransactionSync::importDownloadedTxs(
                 catch (std::exception const& e)
                 {
                     tx->setInvalid(true);
-                    verifySuccess = false;
                     SYNC_LOG(WARNING) << LOG_DESC("verify sender for tx failed")
                                       << LOG_KV("reason", boost::diagnostic_information(e))
                                       << LOG_KV("hash", tx->hash().abridged());
+                    verifySuccess = false;
                 }
             }
         });
+    if (!verifySuccess)
+    {
+        return false;
+    }
     // import the transactions into txpool
     auto txpool = m_config->txpoolStorage();
-    bool enforceImport = (_enforceImport && verifySuccess);
     size_t successImportTxs = 0;
     for (size_t i = 0; i < txsSize; i++)
     {
@@ -455,12 +458,14 @@ bool TransactionSync::importDownloadedTxs(
         // Note: when the transaction is used to reach a consensus, the transaction must be imported
         // into the txpool even if the txpool is full
         auto result = txpool->submitTransaction(
-            std::const_pointer_cast<Transaction>(tx), nullptr, enforceImport);
+            std::const_pointer_cast<Transaction>(tx), nullptr, _enforceImport);
         if (result != TransactionStatus::None)
         {
-            if (_enforceImport && !m_config->txpoolStorage()->exist(tx->hash()))
+            if (_enforceImport)
             {
-                verifySuccess = false;
+                SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs: verify failed")
+                                << LOG_KV("tx", tx->hash().abridged());
+                return false;
             }
             SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs")
                             << LOG_DESC("Import transaction into txpool failed")
@@ -472,7 +477,7 @@ bool TransactionSync::importDownloadedTxs(
     SYNC_LOG(DEBUG) << LOG_DESC("importDownloadedTxs success")
                     << LOG_KV("nodeId", m_config->nodeID()->shortHex())
                     << LOG_KV("successImportTxs", successImportTxs) << LOG_KV("totalTxs", txsSize);
-    return verifySuccess;
+    return true;
 }
 
 void TransactionSync::maintainTransactions()

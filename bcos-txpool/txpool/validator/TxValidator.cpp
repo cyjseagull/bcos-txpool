@@ -53,6 +53,13 @@ TransactionStatus TxValidator::verify(bcos::protocol::Transaction::ConstPtr _tx)
     {
         return TransactionStatus::InvalidSignature;
     }
+    // compare with nonces cached in memory
+    // Note: this must be the last check for updating the txPoolNonceChecker
+    status = m_txPoolNonceChecker->checkNonce(_tx, true);
+    if (status != TransactionStatus::None)
+    {
+        return status;
+    }
     if (isSystemTransaction(_tx))
     {
         _tx->setSystemTx(true);

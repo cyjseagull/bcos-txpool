@@ -87,6 +87,10 @@ public:
     size_t unSealedTxsSize() override;
 
 protected:
+    bcos::protocol::TransactionStatus enforceSubmitTransaction(
+        bcos::protocol::Transaction::Ptr _tx);
+    bcos::protocol::TransactionStatus verifyAndSubmitTransaction(
+        bcos::protocol::Transaction::Ptr _tx, bcos::protocol::TxSubmitCallback _txSubmitCallback);
     size_t unSealedTxsSizeWithoutLock();
     bcos::protocol::TransactionStatus txpoolStorageCheck(bcos::protocol::Transaction::ConstPtr _tx);
 

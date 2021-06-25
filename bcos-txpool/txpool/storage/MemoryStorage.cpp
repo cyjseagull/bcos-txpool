@@ -64,10 +64,53 @@ TransactionStatus MemoryStorage::txpoolStorageCheck(Transaction::ConstPtr _tx)
     return TransactionStatus::None;
 }
 
+// Note: the signature of the tx has already been verified
+TransactionStatus MemoryStorage::enforceSubmitTransaction(Transaction::Ptr _tx)
+{
+    {
+        auto txHash = _tx->hash();
+        // use writeGuard here in case of the transaction status will be modified by other
+        // interfaces
+        WriteGuard l(x_txpoolMutex);
+        if (m_txsTable.count(txHash))
+        {
+            auto tx = m_txsTable[txHash];
+            if (!tx->sealed())
+            {
+                m_sealedTxsSize++;
+                tx->setSealed(true);
+                return TransactionStatus::None;
+            }
+            // The transaction has already been sealed by another node
+            return TransactionStatus::AlreadyInTxPool;
+        }
+    }
+    // avoid the sealed txs be sealed again
+    _tx->setSealed(true);
+    // enforce import the transaction with duplicated nonce(for the consensus proposal)
+    m_sealedTxsSize++;
+    insert(_tx);
+    {
+        WriteGuard l(x_missedTxs);
+        m_missedTxs.unsafe_erase(_tx->hash());
+    }
+    return TransactionStatus::None;
+}
+
 TransactionStatus MemoryStorage::submitTransaction(
     Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback, bool _enforceImport)
 {
-    if (size() >= m_config->poolLimit() && !_enforceImport)
+    if (!_enforceImport)
+    {
+        return verifyAndSubmitTransaction(_tx, _txSubmitCallback);
+    }
+    return enforceSubmitTransaction(_tx);
+}
+
+TransactionStatus MemoryStorage::verifyAndSubmitTransaction(
+    Transaction::Ptr _tx, TxSubmitCallback _txSubmitCallback)
+{
+    if (size() >= m_config->poolLimit())
     {
         return TransactionStatus::TxPoolIsFull;
     }
@@ -116,13 +159,6 @@ void MemoryStorage::notifyInvalidReceipt(
 
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
-    // compare with nonces cached in memory
-    // Note: this must be the last check for updating the txPoolNonceChecker
-    auto status = m_config->txPoolNonceChecker()->checkNonce(_tx, true);
-    if (status != TransactionStatus::None)
-    {
-        return status;
-    }
     ReadGuard l(x_txpoolMutex);
     m_txsTable[_tx->hash()] = _tx;
     m_onReady();
@@ -257,6 +293,7 @@ void MemoryStorage::notifyTxResult(
 
 void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults const& _txsResult)
 {
+    size_t succCount = 0;
     NonceListPtr nonceList = std::make_shared<NonceList>();
     {
         // batch remove
@@ -270,10 +307,13 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
             }
             else if (tx)
             {
+                succCount++;
                 nonceList->emplace_back(tx->nonce());
             }
         }
     }
+    TXPOOL_LOG(INFO) << LOG_DESC("batchRemove txs success")
+                     << LOG_KV("expectedSize", _txsResult.size()) << LOG_KV("succCount", succCount);
     // update the ledger nonce
     m_config->txValidator()->ledgerNonceChecker()->batchInsert(_batchId, nonceList);
     // update the txpool nonce
@@ -417,6 +457,8 @@ void MemoryStorage::removeInvalidTxs()
                     memoryStorage->m_config->txPoolNonceChecker()->batchRemove(
                         memoryStorage->m_invalidNonces);
                 });
+            TXPOOL_LOG(DEBUG) << LOG_DESC("removeInvalidTxs")
+                              << LOG_KV("size", memoryStorage->m_invalidTxs.size());
             memoryStorage->m_invalidTxs.clear();
             memoryStorage->m_invalidNonces.clear();
         }

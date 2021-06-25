@@ -92,15 +92,20 @@ void TxPool::asyncNotifyBlockResult(BlockNumber _blockNumber,
 void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _block,
     std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
-    auto onVerifyFinishedWrapper = [_onVerifyFinished](Error::Ptr _error, bool _ret) {
+    auto block = m_config->blockFactory()->createBlock(_block);
+    auto onVerifyFinishedWrapper = [_onVerifyFinished, block](Error::Ptr _error, bool _ret) {
+        TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock")
+                         << LOG_KV("consNum",
+                                block->blockHeader() ? block->blockHeader()->number() : -1)
+                         << LOG_KV("code", _error ? _error->errorCode() : 0)
+                         << LOG_KV("msg", _error ? _error->errorMessage() : "success")
+                         << LOG_KV("result", _ret);
         if (!_onVerifyFinished)
         {
             return;
         }
         _onVerifyFinished(_error, _ret);
     };
-
-    auto block = m_config->blockFactory()->createBlock(_block);
     auto self = std::weak_ptr<TxPool>(shared_from_this());
     m_worker->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
         try
@@ -132,12 +137,17 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
             if (missedTxs->size() == 0)
             {
                 TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock: hit all transactions in txpool")
+                                  << LOG_KV("consNum",
+                                         block->blockHeader() ? block->blockHeader()->number() : -1)
                                   << LOG_KV("nodeId",
                                          txpool->m_transactionSync->config()->nodeID()->shortHex());
                 onVerifyFinishedWrapper(nullptr, true);
                 return;
             }
-            TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock") << LOG_KV("totalTxs", txsSize)
+            TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock")
+                              << LOG_KV("consNum",
+                                     block->blockHeader() ? block->blockHeader()->number() : -1)
+                              << LOG_KV("totalTxs", txsSize)
                               << LOG_KV("missedTxs", missedTxs->size());
             txpool->m_transactionSync->requestMissedTxs(
                 _generatedNodeID, missedTxs, onVerifyFinishedWrapper);
@@ -250,6 +260,9 @@ void TxPool::fillBlock(HashListPtr _txsHash,
                             << LOG_KV("missedTxsSize", missedTxs->size());
         if (_fetchFromLedger)
         {
+            TXPOOL_LOG(INFO) << LOG_DESC("getTxsFromLocalLedger")
+                             << LOG_KV("txsSize", _txsHash->size())
+                             << LOG_KV("missedSize", missedTxs->size());
             getTxsFromLocalLedger(_txsHash, missedTxs, _onBlockFilled);
         }
         else
