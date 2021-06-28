@@ -35,17 +35,39 @@ using namespace bcos::sealer;
 
 void TxPool::start()
 {
+    if (m_running)
+    {
+        TXPOOL_LOG(WARNING) << LOG_DESC("The txpool has already been started!");
+        return;
+    }
     m_transactionSync->start();
+    m_running = true;
+    TXPOOL_LOG(INFO) << LOG_DESC("Start the txpool.");
 }
 
 void TxPool::stop()
 {
+    if (!m_running)
+    {
+        TXPOOL_LOG(WARNING) << LOG_DESC("The txpool has already been stopped!");
+        return;
+    }
     m_transactionSync->stop();
+    m_running = false;
+    TXPOOL_LOG(INFO) << LOG_DESC("Stop the txpool.");
 }
 
 void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback,
     std::function<void(Error::Ptr)> _onRecv)
 {
+    if (!m_running)
+    {
+        if (_onRecv)
+        {
+            _onRecv(std::make_shared<Error>(-1, "The txpool is not initialized finished"));
+        }
+        return;
+    }
     asyncSubmitTransaction(_txData, _txSubmitCallback);
     if (!_onRecv)
     {
@@ -72,6 +94,15 @@ bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
 void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
     std::function<void(Error::Ptr, HashListPtr, HashListPtr)> _sealCallback)
 {
+    if (!m_running)
+    {
+        if (_sealCallback)
+        {
+            _sealCallback(std::make_shared<Error>(-1, "The txpool is not initialized finished"),
+                nullptr, nullptr);
+        }
+        return;
+    }
     auto fetchedTxs = std::make_shared<HashList>();
     auto sysTxs = std::make_shared<HashList>();
     m_txpoolStorage->batchFetchTxs(fetchedTxs, sysTxs, _txsLimit, _avoidTxs, true);
@@ -81,6 +112,15 @@ void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
 void TxPool::asyncNotifyBlockResult(BlockNumber _blockNumber,
     TransactionSubmitResultsPtr _txsResult, std::function<void(Error::Ptr)> _onNotifyFinished)
 {
+    if (!m_running)
+    {
+        if (_onNotifyFinished)
+        {
+            _onNotifyFinished(
+                std::make_shared<Error>(-1, "The txpool is not initialized finished"));
+        }
+        return;
+    }
     m_txpoolStorage->batchRemove(_blockNumber, *_txsResult);
     if (!_onNotifyFinished)
     {
@@ -92,6 +132,15 @@ void TxPool::asyncNotifyBlockResult(BlockNumber _blockNumber,
 void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _block,
     std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
+    if (!m_running)
+    {
+        if (_onVerifyFinished)
+        {
+            _onVerifyFinished(
+                std::make_shared<Error>(-1, "The txpool is not initialized finished"), false);
+        }
+        return;
+    }
     auto block = m_config->blockFactory()->createBlock(_block);
     auto onVerifyFinishedWrapper = [_onVerifyFinished, block](Error::Ptr _error, bool _ret) {
         TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock")
@@ -164,6 +213,14 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, byt
     std::function<void(bytesConstRef _respData)> _sendResponse,
     std::function<void(Error::Ptr _error)> _onRecv)
 {
+    if (!m_running)
+    {
+        if (_onRecv)
+        {
+            _onRecv(std::make_shared<Error>(-1, "The txpool is not initialized finished"));
+        }
+        return;
+    }
     m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
     if (!_onRecv)
     {
@@ -246,6 +303,15 @@ void TxPool::getTxsFromLocalLedger(HashListPtr _txsHash, HashListPtr _missedTxs,
 void TxPool::asyncFillBlock(
     HashListPtr _txsHash, std::function<void(Error::Ptr, TransactionsPtr)> _onBlockFilled)
 {
+    if (!m_running)
+    {
+        if (_onBlockFilled)
+        {
+            _onBlockFilled(
+                std::make_shared<Error>(-1, "The txpool is not initialized finished"), nullptr);
+        }
+        return;
+    }
     fillBlock(_txsHash, _onBlockFilled, true);
 }
 
@@ -282,6 +348,14 @@ void TxPool::fillBlock(HashListPtr _txsHash,
 void TxPool::asyncMarkTxs(
     HashListPtr _txsHash, bool _sealedFlag, std::function<void(Error::Ptr)> _onRecvResponse)
 {
+    if (!m_running)
+    {
+        if (_onRecvResponse)
+        {
+            _onRecvResponse(nullptr);
+        }
+        return;
+    }
     m_txpoolStorage->batchMarkTxs(*_txsHash, _sealedFlag);
     if (!_onRecvResponse)
     {

@@ -48,10 +48,19 @@ namespace bcos
 {
 namespace test
 {
-class FakeTransactionSync : public TransactionSync
+class FakeTransactionSync1 : public TransactionSync
 {
 public:
-    explicit FakeTransactionSync(TransactionSyncConfig::Ptr _config) : TransactionSync(_config) {}
+    explicit FakeTransactionSync1(TransactionSyncConfig::Ptr _config) : TransactionSync(_config) {}
+    ~FakeTransactionSync1() override {}
+    void start() override {}
+};
+
+class FakeTransactionSync : public FakeTransactionSync1
+{
+public:
+    explicit FakeTransactionSync(TransactionSyncConfig::Ptr _config) : FakeTransactionSync1(_config)
+    {}
     ~FakeTransactionSync() override {}
 
     // only broadcast txsStatus
@@ -93,6 +102,10 @@ public:
         m_sealer = std::make_shared<FakeSealer>();
         m_txpool = txPoolFactory->createTxPool();
         m_sync = std::dynamic_pointer_cast<TransactionSync>(m_txpool->transactionSync());
+        auto syncConfig = m_sync->config();
+        m_sync = std::make_shared<FakeTransactionSync1>(syncConfig);
+        m_txpool->setTransactionSync(m_sync);
+        m_txpool->start();
 
         m_fakeGateWay->addTxPool(_nodeId, m_txpool);
         m_frontService->setGateWay(m_fakeGateWay);

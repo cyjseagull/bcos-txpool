@@ -131,6 +131,7 @@ private:
     TxPoolStorageInterface::Ptr m_txpoolStorage;
     bcos::sync::TransactionSyncInterface::Ptr m_transactionSync;
     ThreadPool::Ptr m_worker;
+    std::atomic_bool m_running = {false};
 };
 }  // namespace txpool
 }  // namespace bcos
