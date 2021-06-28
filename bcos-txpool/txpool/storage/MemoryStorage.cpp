@@ -167,10 +167,15 @@ TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
     return TransactionStatus::None;
 }
 
-void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _tx)
+void MemoryStorage::preCommitTransaction(
+    bcos::protocol::Transaction::ConstPtr _tx, size_t _retryTime)
 {
+    if (_retryTime > 3)
+    {
+        return;
+    }
     auto self = std::weak_ptr<MemoryStorage>(shared_from_this());
-    m_worker->enqueue([self, _tx]() {
+    m_worker->enqueue([self, _tx, _retryTime]() {
         try
         {
             auto txpoolStorage = self.lock();
@@ -185,13 +190,13 @@ void MemoryStorage::preCommitTransaction(bcos::protocol::Transaction::ConstPtr _
             auto txsHash = std::make_shared<HashList>();
             txsHash->emplace_back(_tx->hash());
             txpoolStorage->m_config->ledger()->asyncStoreTransactions(
-                txsToStore, txsHash, [txpoolStorage, _tx](Error::Ptr _error) {
+                txsToStore, txsHash, [txpoolStorage, _tx, _retryTime](Error::Ptr _error) {
                     if (_error == nullptr)
                     {
                         return;
                     }
-                    // Note: Will it cause an avalanche here?
-                    txpoolStorage->preCommitTransaction(_tx);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    txpoolStorage->preCommitTransaction(_tx, (_retryTime + 1));
                     TXPOOL_LOG(WARNING) << LOG_DESC("asyncPreStoreTransaction failed")
                                         << LOG_KV("errorCode", _error->errorCode())
                                         << LOG_KV("errorMsg", _error->errorMessage())
