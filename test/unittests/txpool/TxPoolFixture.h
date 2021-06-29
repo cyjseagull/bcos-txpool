@@ -178,24 +178,21 @@ inline void checkTxSubmit(TxPoolInterface::Ptr _txpool, TxPoolStorageInterface::
     std::shared_ptr<bool> verifyFinish = std::make_shared<bool>(false);
     auto encodedData = _tx->encode();
     auto txData = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
-    _txpool->asyncSubmit(
-        txData,
-        [verifyFinish, _expectedTxHash, _expectedStatus, _maybeExpired](
-            Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
-            BOOST_CHECK(_error == nullptr);
-            std::cout << "#### expectedTxHash:" << _expectedTxHash.abridged() << std::endl;
-            std::cout << "##### receipt txHash:" << _result->txHash().abridged() << std::endl;
-            BOOST_CHECK(_result->txHash() == _expectedTxHash);
-            std::cout << "##### _expectedStatus: " << std::to_string(_expectedStatus) << std::endl;
-            std::cout << "##### receiptStatus:" << std::to_string(_result->status()) << std::endl;
-            if (_maybeExpired)
-            {
-                BOOST_CHECK((_result->status() == _expectedStatus) ||
-                            (_result->status() == (int32_t)TransactionStatus::BlockLimitCheckFail));
-            }
-            *verifyFinish = true;
-        },
-        [&](Error::Ptr _error) { BOOST_CHECK(_error == nullptr); });
+    _txpool->asyncSubmit(txData, [verifyFinish, _expectedTxHash, _expectedStatus, _maybeExpired](
+                                     Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
+        BOOST_CHECK(_error == nullptr);
+        std::cout << "#### expectedTxHash:" << _expectedTxHash.abridged() << std::endl;
+        std::cout << "##### receipt txHash:" << _result->txHash().abridged() << std::endl;
+        BOOST_CHECK(_result->txHash() == _expectedTxHash);
+        std::cout << "##### _expectedStatus: " << std::to_string(_expectedStatus) << std::endl;
+        std::cout << "##### receiptStatus:" << std::to_string(_result->status()) << std::endl;
+        if (_maybeExpired)
+        {
+            BOOST_CHECK((_result->status() == _expectedStatus) ||
+                        (_result->status() == (int32_t)TransactionStatus::BlockLimitCheckFail));
+        }
+        *verifyFinish = true;
+    });
     if (_waitNothing)
     {
         return;

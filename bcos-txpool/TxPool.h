@@ -44,8 +44,8 @@ public:
     void start() override;
     void stop() override;
 
-    void asyncSubmit(bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback,
-        std::function<void(Error::Ptr)> _onRecv) override;
+    void asyncSubmit(
+        bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback) override;
 
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
         std::function<void(Error::Ptr, bcos::crypto::HashListPtr, bcos::crypto::HashListPtr)>

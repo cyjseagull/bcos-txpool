@@ -423,15 +423,12 @@ void txPoolInitAndSubmitTransactionTest(bool _sm, CryptoSuite::Ptr _cryptoSuite)
         (*txData)[i] += 100;
     }
     bool verifyFinish = false;
-    txpool->asyncSubmit(
-        txData,
-        [&](Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
-            BOOST_CHECK(_error == nullptr);
-            BOOST_CHECK(_result->txHash() == HashType());
-            BOOST_CHECK(_result->status() == (uint32_t)(TransactionStatus::Malform));
-            verifyFinish = true;
-        },
-        [&](Error::Ptr _error) { BOOST_CHECK(_error == nullptr); });
+    txpool->asyncSubmit(txData, [&](Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
+        BOOST_CHECK(_error == nullptr);
+        BOOST_CHECK(_result->txHash() == HashType());
+        BOOST_CHECK(_result->status() == (uint32_t)(TransactionStatus::Malform));
+        verifyFinish = true;
+    });
     while (!verifyFinish)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));

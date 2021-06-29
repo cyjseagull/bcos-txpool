@@ -47,8 +47,7 @@ void importTransactions(size_t _txsNum, CryptoSuite::Ptr _cryptoSuite, TxPoolFix
         transactions.push_back(tx);
         auto encodedData = tx->encode();
         auto txData = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
-        txpool->asyncSubmit(
-            txData, [&](Error::Ptr, TransactionSubmitResult::Ptr) {}, nullptr);
+        txpool->asyncSubmit(txData, [&](Error::Ptr, TransactionSubmitResult::Ptr) {});
     }
     auto startT = utcTime();
     while (txpool->txpoolStorage()->size() < _txsNum && (utcTime() - startT <= 10000))

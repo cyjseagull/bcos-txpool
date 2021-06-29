@@ -57,23 +57,18 @@ void TxPool::stop()
     TXPOOL_LOG(INFO) << LOG_DESC("Stop the txpool.");
 }
 
-void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback,
-    std::function<void(Error::Ptr)> _onRecv)
+void TxPool::asyncSubmit(bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
 {
     if (!m_running)
     {
-        if (_onRecv)
+        if (_txSubmitCallback)
         {
-            _onRecv(std::make_shared<Error>(-1, "The txpool is not initialized finished"));
+            _txSubmitCallback(
+                std::make_shared<Error>(-1, "The txpool is not initialized finished"), nullptr);
         }
         return;
     }
     asyncSubmitTransaction(_txData, _txSubmitCallback);
-    if (!_onRecv)
-    {
-        return;
-    }
-    _onRecv(nullptr);
 }
 
 bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
