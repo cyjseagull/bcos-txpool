@@ -58,8 +58,8 @@ public:
     void asyncVerifyBlock(bcos::crypto::PublicPtr _generatedNodeID, bytesConstRef const& _block,
         std::function<void(Error::Ptr, bool)> _onVerifyFinished) override;
 
-    void asyncNotifyTxsSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
-        bytesConstRef _data, std::function<void(bytesConstRef _respData)> _sendResponse,
+    void asyncNotifyTxsSyncMessage(bcos::Error::Ptr _error, std::string const& _uuid,
+        bcos::crypto::NodeIDPtr _nodeID, bytesConstRef _data,
         std::function<void(Error::Ptr _error)> _onRecv) override;
 
     void notifyConnectedNodes(bcos::crypto::NodeIDSet const& _connectedNodes,
@@ -98,6 +98,8 @@ protected:
         std::function<void(Error::Ptr, bcos::protocol::TransactionsPtr)> _onBlockFilled,
         bool _fetchFromLedger = true);
 
+    void initSendResponseHandler();
+
     template <typename T>
     void asyncSubmitTransaction(T _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback)
     {
@@ -130,6 +132,11 @@ private:
     TxPoolConfig::Ptr m_config;
     TxPoolStorageInterface::Ptr m_txpoolStorage;
     bcos::sync::TransactionSyncInterface::Ptr m_transactionSync;
+
+    std::function<void(std::string const& _id, int _moduleID, bcos::crypto::NodeIDPtr _dstNode,
+        bytesConstRef _data)>
+        m_sendResponseHandler;
+
     ThreadPool::Ptr m_worker;
     std::atomic_bool m_running = {false};
 };

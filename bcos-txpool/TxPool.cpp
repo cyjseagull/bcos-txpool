@@ -204,9 +204,8 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     });
 }
 
-void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data,
-    std::function<void(bytesConstRef _respData)> _sendResponse,
-    std::function<void(Error::Ptr _error)> _onRecv)
+void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, std::string const& _uuid,
+    NodeIDPtr _nodeID, bytesConstRef _data, std::function<void(Error::Ptr _error)> _onRecv)
 {
     if (!m_running)
     {
@@ -216,7 +215,26 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, NodeIDPtr _nodeID, byt
         }
         return;
     }
-    m_transactionSync->onRecvSyncMessage(_error, _nodeID, _data, _sendResponse);
+    auto self = std::weak_ptr<TxPool>(shared_from_this());
+    m_transactionSync->onRecvSyncMessage(
+        _error, _nodeID, _data, [self, _uuid, _nodeID](bytesConstRef _respData) {
+            try
+            {
+                auto txpool = self.lock();
+                if (!txpool)
+                {
+                    return;
+                }
+                txpool->m_sendResponseHandler(
+                    _uuid, bcos::protocol::ModuleID::TxsSync, _nodeID, _respData);
+            }
+            catch (std::exception const& e)
+            {
+                TXPOOL_LOG(WARNING) << LOG_DESC("asyncNotifyTxsSyncMessage: sendResponse failed")
+                                    << LOG_KV("error", boost::diagnostic_information(e))
+                                    << LOG_KV("uuid", _uuid) << LOG_KV("dst", _nodeID->shortHex());
+            }
+        });
     if (!_onRecv)
     {
         return;
@@ -361,6 +379,7 @@ void TxPool::asyncMarkTxs(
 
 void TxPool::init(SealerInterface::Ptr _sealer)
 {
+    initSendResponseHandler();
     m_config->setSealer(_sealer);
     auto ledgerConfigFetcher = std::make_shared<LedgerConfigFetcher>(m_config->ledger());
     TXPOOL_LOG(INFO) << LOG_DESC("fetch LedgerConfig information");
@@ -435,4 +454,38 @@ void TxPool::init(SealerInterface::Ptr _sealer)
                                     << LOG_KV("error", boost::diagnostic_information(e));
             }
         });
+}
+
+void TxPool::initSendResponseHandler()
+{
+    // set the sendResponse callback
+    std::weak_ptr<bcos::front::FrontServiceInterface> weakFrontService =
+        m_transactionSync->config()->frontService();
+    m_sendResponseHandler = [weakFrontService](std::string const& _id, int _moduleID,
+                                NodeIDPtr _dstNode, bytesConstRef _data) {
+        try
+        {
+            auto frontService = weakFrontService.lock();
+            if (!frontService)
+            {
+                return;
+            }
+            frontService->asyncSendResponse(
+                _id, _moduleID, _dstNode, _data, [_id, _moduleID, _dstNode](Error::Ptr _error) {
+                    if (_error)
+                    {
+                        TXPOOL_LOG(WARNING) << LOG_DESC("sendResonse failed") << LOG_KV("uuid", _id)
+                                            << LOG_KV("module", std::to_string(_moduleID))
+                                            << LOG_KV("dst", _dstNode->shortHex())
+                                            << LOG_KV("code", _error->errorCode())
+                                            << LOG_KV("msg", _error->errorMessage());
+                    }
+                });
+        }
+        catch (std::exception const& e)
+        {
+            TXPOOL_LOG(WARNING) << LOG_DESC("sendResonse exception")
+                                << LOG_KV("error", boost::diagnostic_information(e));
+        }
+    };
 }
