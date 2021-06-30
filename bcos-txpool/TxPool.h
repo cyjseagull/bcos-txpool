@@ -86,7 +86,12 @@ public:
         m_transactionSync = _transactionSync;
     }
 
-    virtual void init(bcos::sealer::SealerInterface::Ptr _sealer);
+    virtual void init();
+    virtual void registerUnsealedTxsNotifier(
+        std::function<void(size_t, std::function<void(Error::Ptr)>)> _unsealedTxsNotifier)
+    {
+        m_txpoolStorage->registerUnsealedTxsNotifier(_unsealedTxsNotifier);
+    }
 
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);

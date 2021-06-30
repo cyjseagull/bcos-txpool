@@ -31,8 +31,6 @@ using namespace bcos::crypto;
 using namespace bcos::sync;
 using namespace bcos::consensus;
 using namespace bcos::tool;
-using namespace bcos::sealer;
-
 void TxPool::start()
 {
     if (m_running)
@@ -377,10 +375,9 @@ void TxPool::asyncMarkTxs(
     _onRecvResponse(nullptr);
 }
 
-void TxPool::init(SealerInterface::Ptr _sealer)
+void TxPool::init()
 {
     initSendResponseHandler();
-    m_config->setSealer(_sealer);
     auto ledgerConfigFetcher = std::make_shared<LedgerConfigFetcher>(m_config->ledger());
     TXPOOL_LOG(INFO) << LOG_DESC("fetch LedgerConfig information");
     ledgerConfigFetcher->fetchBlockNumberAndHash();

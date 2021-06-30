@@ -99,7 +99,6 @@ public:
         auto txPoolFactory =
             std::make_shared<TxPoolFactory>(_nodeId, _cryptoSuite, m_txResultFactory,
                 m_blockFactory, m_frontService, m_ledger, m_groupId, m_chainId, m_blockLimit);
-        m_sealer = std::make_shared<FakeSealer>();
         m_txpool = txPoolFactory->createTxPool();
         m_sync = std::dynamic_pointer_cast<TransactionSync>(m_txpool->transactionSync());
         auto syncConfig = m_sync->config();
@@ -119,7 +118,6 @@ public:
     std::string const& groupId() { return m_groupId; }
     FakeFrontService::Ptr frontService() { return m_frontService; }
     TransactionSync::Ptr sync() { return m_sync; }
-    FakeSealer::Ptr sealer() { return m_sealer; }
     void appendSealer(NodeIDPtr _nodeId)
     {
         auto consensusNode = std::make_shared<ConsensusNode>(_nodeId);
@@ -130,7 +128,7 @@ public:
     void init()
     {
         // init the txpool
-        m_txpool->init(m_sealer);
+        m_txpool->init();
     }
 
     void resetToFakeTransactionSync()
@@ -165,7 +163,6 @@ private:
     FakeLedger::Ptr m_ledger;
     FakeFrontService::Ptr m_frontService;
     FakeGateWay::Ptr m_fakeGateWay;
-    FakeSealer::Ptr m_sealer;
     TxPool::Ptr m_txpool;
     TransactionSync::Ptr m_sync;
 };

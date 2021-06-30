@@ -569,20 +569,24 @@ size_t MemoryStorage::unSealedTxsSizeWithoutLock()
 
 void MemoryStorage::notifyUnsealedTxsSize(size_t _retryTime)
 {
+    // Note: must set the notifier
+    if (!m_unsealedTxsNotifier)
+    {
+        return;
+    }
     auto unsealedTxsSize = unSealedTxsSizeWithoutLock();
-    m_config->sealer()->asyncNoteUnSealedTxsSize(
-        unsealedTxsSize, [_retryTime, this](Error::Ptr _error) {
-            if (_error == nullptr)
-            {
-                return;
-            }
-            TXPOOL_LOG(WARNING) << LOG_DESC("notifyUnsealedTxsSize failed")
-                                << LOG_KV("errorCode", _error->errorCode())
-                                << LOG_KV("errorMsg", _error->errorMessage());
-            if (_retryTime >= c_maxRetryTime)
-            {
-                return;
-            }
-            this->notifyUnsealedTxsSize((_retryTime + 1));
-        });
+    m_unsealedTxsNotifier(unsealedTxsSize, [_retryTime, this](Error::Ptr _error) {
+        if (_error == nullptr)
+        {
+            return;
+        }
+        TXPOOL_LOG(WARNING) << LOG_DESC("notifyUnsealedTxsSize failed")
+                            << LOG_KV("errorCode", _error->errorCode())
+                            << LOG_KV("errorMsg", _error->errorMessage());
+        if (_retryTime >= c_maxRetryTime)
+        {
+            return;
+        }
+        this->notifyUnsealedTxsSize((_retryTime + 1));
+    });
 }

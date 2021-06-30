@@ -26,7 +26,6 @@
 #include <bcos-framework/interfaces/ledger/LedgerInterface.h>
 #include <bcos-framework/interfaces/protocol/BlockFactory.h>
 #include <bcos-framework/interfaces/protocol/TransactionSubmitResultFactory.h>
-#include <bcos-framework/interfaces/sealer/SealerInterface.h>
 namespace bcos
 {
 namespace txpool
@@ -84,10 +83,6 @@ public:
         return m_blockFactory->transactionFactory();
     }
     std::shared_ptr<bcos::ledger::LedgerInterface> ledger() { return m_ledger; }
-
-    bcos::sealer::SealerInterface::Ptr sealer() { return m_sealer; }
-    void setSealer(bcos::sealer::SealerInterface::Ptr _sealer) { m_sealer = _sealer; }
-
     int64_t blockLimit() const { return m_blockLimit; }
 
 private:
@@ -95,7 +90,6 @@ private:
     bcos::protocol::TransactionSubmitResultFactory::Ptr m_txResultFactory;
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
-    bcos::sealer::SealerInterface::Ptr m_sealer;
     NonceCheckerInterface::Ptr m_txPoolNonceChecker;
     size_t m_poolLimit = 15000;
     size_t m_notifierWorkerNum = 1;

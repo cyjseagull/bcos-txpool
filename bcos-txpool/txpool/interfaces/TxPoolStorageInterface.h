@@ -85,8 +85,16 @@ public:
     virtual void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) = 0;
     virtual size_t unSealedTxsSize() = 0;
 
+    virtual void registerUnsealedTxsNotifier(
+        std::function<void(size_t, std::function<void(Error::Ptr)>)> _unsealedTxsNotifier)
+    {
+        m_unsealedTxsNotifier = _unsealedTxsNotifier;
+    }
+
 protected:
     bcos::CallbackCollectionHandler<> m_onReady;
+    // notify the sealer the latest unsealed txs
+    std::function<void(size_t, std::function<void(Error::Ptr)>)> m_unsealedTxsNotifier;
 };
 }  // namespace txpool
 }  // namespace bcos
