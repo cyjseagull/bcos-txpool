@@ -93,6 +93,17 @@ public:
         m_txpoolStorage->registerUnsealedTxsNotifier(_unsealedTxsNotifier);
     }
 
+    void asyncGetPendingTransactionSize(
+        std::function<void(Error::Ptr, size_t)> _onGetTxsSize) override
+    {
+        if (!_onGetTxsSize)
+        {
+            return;
+        }
+        auto pendingTxsSize = m_txpoolStorage->size();
+        _onGetTxsSize(nullptr, pendingTxsSize);
+    }
+
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);
     virtual void getTxsFromLocalLedger(bcos::crypto::HashListPtr _txsHash,
