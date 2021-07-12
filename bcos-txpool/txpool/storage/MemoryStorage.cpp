@@ -32,6 +32,18 @@ MemoryStorage::MemoryStorage(TxPoolConfig::Ptr _config) : m_config(_config)
     m_worker = std::make_shared<ThreadPool>("txpoolWorker", 1);
 }
 
+void MemoryStorage::stop()
+{
+    if (m_notifier)
+    {
+        m_notifier->stop();
+    }
+    if (m_worker)
+    {
+        m_worker->stop();
+    }
+}
+
 TransactionStatus MemoryStorage::submitTransaction(
     bytesPointer _txData, TxSubmitCallback _txSubmitCallback)
 {

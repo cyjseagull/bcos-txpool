@@ -46,8 +46,15 @@ void TransactionSync::stop()
         SYNC_LOG(DEBUG) << LOG_DESC("TransactionSync already stopped");
         return;
     }
-
     m_running.store(false);
+    if (m_worker)
+    {
+        m_worker->stop();
+    }
+    if (m_txsRequester)
+    {
+        m_txsRequester->stop();
+    }
     finishWorker();
     stopWorking();
     // will not restart worker, so terminate it

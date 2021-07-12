@@ -91,6 +91,8 @@ public:
         m_unsealedTxsNotifier = _unsealedTxsNotifier;
     }
 
+    virtual void stop() = 0;
+
 protected:
     bcos::CallbackCollectionHandler<> m_onReady;
     // notify the sealer the latest unsealed txs

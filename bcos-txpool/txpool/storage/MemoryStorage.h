@@ -86,6 +86,8 @@ public:
 
     size_t unSealedTxsSize() override;
 
+    void stop() override;
+
 protected:
     bcos::protocol::TransactionStatus enforceSubmitTransaction(
         bcos::protocol::Transaction::Ptr _tx);

@@ -50,6 +50,14 @@ void TxPool::stop()
         TXPOOL_LOG(WARNING) << LOG_DESC("The txpool has already been stopped!");
         return;
     }
+    if (m_worker)
+    {
+        m_worker->stop();
+    }
+    if (m_txpoolStorage)
+    {
+        m_txpoolStorage->stop();
+    }
     m_transactionSync->stop();
     m_running = false;
     TXPOOL_LOG(INFO) << LOG_DESC("Stop the txpool.");
