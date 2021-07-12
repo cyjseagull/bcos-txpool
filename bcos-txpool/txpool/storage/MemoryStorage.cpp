@@ -233,13 +233,19 @@ Transaction::ConstPtr MemoryStorage::removeWithoutLock(bcos::crypto::HashType co
     }
     auto tx = m_txsTable[_txHash];
     m_txsTable.unsafe_erase(_txHash);
+    if (tx && tx->sealed())
+    {
+        m_sealedTxsSize--;
+    }
     return tx;
 }
 
 Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
 {
     WriteGuard l(x_txpoolMutex);
-    return removeWithoutLock(_txHash);
+    auto tx = removeWithoutLock(_txHash);
+    notifyUnsealedTxsSize();
+    return tx;
 }
 
 Transaction::ConstPtr MemoryStorage::removeSubmittedTxWithoutLock(
@@ -250,6 +256,7 @@ Transaction::ConstPtr MemoryStorage::removeSubmittedTxWithoutLock(
     {
         return nullptr;
     }
+    notifyUnsealedTxsSize();
     notifyTxResult(tx, _txSubmitResult);
     return tx;
 }
@@ -575,6 +582,9 @@ void MemoryStorage::notifyUnsealedTxsSize(size_t _retryTime)
         return;
     }
     auto unsealedTxsSize = unSealedTxsSizeWithoutLock();
+    // TODO: remove this log
+    TXPOOL_LOG(TRACE) << LOG_DESC("notifyUnsealedTxsSize")
+                      << LOG_KV("unsealedTxsSize", unsealedTxsSize);
     m_unsealedTxsNotifier(unsealedTxsSize, [_retryTime, this](Error::Ptr _error) {
         if (_error == nullptr)
         {
