@@ -79,6 +79,13 @@ TransactionStatus MemoryStorage::txpoolStorageCheck(Transaction::ConstPtr _tx)
 // Note: the signature of the tx has already been verified
 TransactionStatus MemoryStorage::enforceSubmitTransaction(Transaction::Ptr _tx)
 {
+    // the transaction has already onChain, reject it
+    auto result = m_config->txValidator()->submittedToChain(_tx);
+    if (result == TransactionStatus::NonceCheckFail)
+    {
+        return TransactionStatus::NonceCheckFail;
+    }
+
     {
         auto txHash = _tx->hash();
         // use writeGuard here in case of the transaction status will be modified by other
@@ -97,10 +104,14 @@ TransactionStatus MemoryStorage::enforceSubmitTransaction(Transaction::Ptr _tx)
             return TransactionStatus::AlreadyInTxPool;
         }
     }
-    // avoid the sealed txs be sealed again
-    _tx->setSealed(true);
+
     // enforce import the transaction with duplicated nonce(for the consensus proposal)
-    m_sealedTxsSize++;
+    if (!_tx->sealed())
+    {
+        m_sealedTxsSize++;
+        // avoid the sealed txs be sealed again
+        _tx->setSealed(true);
+    }
     insert(_tx);
     {
         WriteGuard l(x_missedTxs);
@@ -560,6 +571,27 @@ void MemoryStorage::batchMarkTxs(bcos::crypto::HashList const& _txsHashList, boo
             m_sealedTxsSize--;
         }
         tx->setSealed(_sealFlag);
+    }
+    notifyUnsealedTxsSize();
+}
+
+void MemoryStorage::batchMarkAllTxs(bool _sealFlag)
+{
+    ReadGuard l(x_txpoolMutex);
+    for (auto item : m_txsTable)
+    {
+        if (item.second)
+        {
+            item.second->setSealed(_sealFlag);
+        }
+    }
+    if (_sealFlag)
+    {
+        m_sealedTxsSize = m_txsTable.size();
+    }
+    else
+    {
+        m_sealedTxsSize = 0;
     }
     notifyUnsealedTxsSize();
 }

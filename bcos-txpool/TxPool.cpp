@@ -322,6 +322,18 @@ void TxPool::asyncMarkTxs(
     _onRecvResponse(nullptr);
 }
 
+void TxPool::asyncResetTxPool(std::function<void(Error::Ptr)> _onRecvResponse)
+{
+    // mark all the transactions as unsealed
+    m_txpoolStorage->batchMarkAllTxs(false);
+    if (!_onRecvResponse)
+    {
+        return;
+    }
+    TXPOOL_LOG(INFO) << LOG_DESC("asyncResetTxPool") << LOG_KV("txsSize", m_txpoolStorage->size());
+    _onRecvResponse(nullptr);
+}
+
 void TxPool::init()
 {
     initSendResponseHandler();

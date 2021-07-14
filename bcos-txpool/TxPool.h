@@ -77,6 +77,8 @@ public:
     void asyncMarkTxs(bcos::crypto::HashListPtr _txsHash, bool _sealedFlag,
         std::function<void(Error::Ptr)> _onRecvResponse) override;
 
+    void asyncResetTxPool(std::function<void(Error::Ptr)> _onRecvResponse) override;
+
     TxPoolConfig::Ptr txpoolConfig() { return m_config; }
     TxPoolStorageInterface::Ptr txpoolStorage() { return m_txpoolStorage; }
 

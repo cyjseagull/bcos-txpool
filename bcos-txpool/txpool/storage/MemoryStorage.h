@@ -83,6 +83,7 @@ public:
         bcos::crypto::HashList const& _txsHashList, bcos::crypto::NodeIDPtr _peer) override;
 
     void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) override;
+    void batchMarkAllTxs(bool _sealFlag) override;
 
     size_t unSealedTxsSize() override;
 
