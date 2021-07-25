@@ -176,8 +176,7 @@ inline void checkTxSubmit(TxPoolInterface::Ptr _txpool, TxPoolStorageInterface::
     auto encodedData = _tx->encode();
     auto txData = std::make_shared<bytes>(encodedData.begin(), encodedData.end());
     _txpool->asyncSubmit(txData, [verifyFinish, _expectedTxHash, _expectedStatus, _maybeExpired](
-                                     Error::Ptr _error, TransactionSubmitResult::Ptr _result) {
-        BOOST_CHECK(_error == nullptr);
+                                     Error::Ptr, TransactionSubmitResult::Ptr _result) {
         std::cout << "#### expectedTxHash:" << _expectedTxHash.abridged() << std::endl;
         std::cout << "##### receipt txHash:" << _result->txHash().abridged() << std::endl;
         BOOST_CHECK(_result->txHash() == _expectedTxHash);

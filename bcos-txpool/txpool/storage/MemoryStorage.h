@@ -82,12 +82,16 @@ public:
     bcos::crypto::HashListPtr filterUnknownTxs(
         bcos::crypto::HashList const& _txsHashList, bcos::crypto::NodeIDPtr _peer) override;
 
-    void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) override;
+    void batchMarkTxs(bcos::crypto::HashList const& _txsHashList,
+        bcos::protocol::BlockNumber _batchId, bcos::crypto::HashType const& _batchHash,
+        bool _sealFlag) override;
     void batchMarkAllTxs(bool _sealFlag) override;
 
     size_t unSealedTxsSize() override;
 
     void stop() override;
+
+    void printPendingTxs() override;
 
 protected:
     bcos::protocol::TransactionStatus enforceSubmitTransaction(
@@ -135,6 +139,8 @@ private:
     std::atomic<size_t> m_sealedTxsSize = {0};
 
     size_t c_maxRetryTime = 3;
+
+    int64_t m_blockNumberUpdatedTime;
 };
 }  // namespace txpool
 }  // namespace bcos

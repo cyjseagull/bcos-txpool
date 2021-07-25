@@ -57,7 +57,8 @@ public:
 
     using VerifyResponseCallback = std::function<void(Error::Ptr, bool)>;
     void requestMissedTxs(bcos::crypto::PublicPtr _generatedNodeID,
-        bcos::crypto::HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished) override;
+        bcos::crypto::HashListPtr _missedTxs, bcos::protocol::Block::Ptr _verifiedProposal,
+        VerifyResponseCallback _onVerifyFinished) override;
 
     virtual void maintainTransactions();
     virtual void maintainDownloadingTransactions();
@@ -79,12 +80,14 @@ protected:
     // functions called by requestMissedTxs
     virtual void verifyFetchedTxs(Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
         bytesConstRef _data, bcos::crypto::HashListPtr _missedTxs,
-        VerifyResponseCallback _onVerifyFinished, bool _enforceImport = false);
+        bcos::protocol::Block::Ptr _verifiedProposal, VerifyResponseCallback _onVerifyFinished);
     virtual void requestMissedTxsFromPeer(bcos::crypto::PublicPtr _generatedNodeID,
-        bcos::crypto::HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished);
+        bcos::crypto::HashListPtr _missedTxs, bcos::protocol::Block::Ptr _verifiedProposal,
+        VerifyResponseCallback _onVerifyFinished);
+
     virtual size_t onGetMissedTxsFromLedger(std::set<bcos::crypto::HashType>& _missedTxs,
         Error::Ptr _error, bcos::protocol::TransactionsPtr _fetchedTxs,
-        VerifyResponseCallback _onVerifyFinished);
+        bcos::protocol::Block::Ptr _verifiedProposal, VerifyResponseCallback _onVerifyFinished);
 
 
     virtual bool downloadTxsBufferEmpty()
@@ -108,10 +111,12 @@ protected:
         return localBuffer;
     }
     virtual bool importDownloadedTxs(bcos::crypto::NodeIDPtr _fromNode,
-        bcos::protocol::Block::Ptr _txsBuffer, bool _enforceImport = false);
+        bcos::protocol::Block::Ptr _txsBuffer,
+        bcos::protocol::Block::Ptr _verifiedProposal = nullptr);
 
     virtual bool importDownloadedTxs(bcos::crypto::NodeIDPtr _fromNode,
-        bcos::protocol::TransactionsPtr _txs, bool _enforceImport = false);
+        bcos::protocol::TransactionsPtr _txs,
+        bcos::protocol::Block::Ptr _verifiedProposal = nullptr);
 
     void noteNewTransactions()
     {

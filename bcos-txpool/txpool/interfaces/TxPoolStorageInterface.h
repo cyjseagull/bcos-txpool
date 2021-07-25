@@ -82,7 +82,9 @@ public:
         return m_onReady.add(_t);
     }
 
-    virtual void batchMarkTxs(bcos::crypto::HashList const& _txsHashList, bool _sealFlag) = 0;
+    virtual void batchMarkTxs(bcos::crypto::HashList const& _txsHashList,
+        bcos::protocol::BlockNumber _batchId, bcos::crypto::HashType const& _batchHash,
+        bool _sealFlag) = 0;
     virtual void batchMarkAllTxs(bool _sealFlag) = 0;
 
     virtual size_t unSealedTxsSize() = 0;
@@ -94,6 +96,7 @@ public:
     }
 
     virtual void stop() = 0;
+    virtual void printPendingTxs() {}
 
 protected:
     bcos::CallbackCollectionHandler<> m_onReady;

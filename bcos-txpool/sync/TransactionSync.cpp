@@ -64,6 +64,10 @@ void TransactionSync::stop()
 
 void TransactionSync::executeWorker()
 {
+#if FISCO_DEBUG
+    // TODO: remove this, now just for bug tracing
+    m_config->txpoolStorage()->printPendingTxs();
+#endif
     if (!downloadTxsBufferEmpty())
     {
         maintainDownloadingTransactions();
@@ -164,6 +168,13 @@ void TransactionSync::onReceiveTxsRequest(
         SYNC_LOG(WARNING) << LOG_DESC("onReceiveTxsRequest: transaction missing")
                           << LOG_KV("missedTxsSize", missedTxs.size())
                           << LOG_KV("nodeId", m_config->nodeID()->shortHex());
+#if FISCO_DEBUG
+        // TODO: remove this, now just for bug tracing
+        for (auto txHash : missedTxs)
+        {
+            SYNC_LOG(WARNING) << LOG_DESC("miss tx") << txHash.abridged();
+        }
+#endif
     }
     // response the txs
     auto block = m_config->blockFactory()->createBlock();
@@ -178,20 +189,23 @@ void TransactionSync::onReceiveTxsRequest(
         TxsSyncPacketType::TxsResponsePacket, std::move(*txsData));
     auto packetData = txsResponse->encode();
     _sendResponse(ref(*packetData));
+    SYNC_LOG(INFO) << LOG_DESC("onReceiveTxsRequest: response txs")
+                   << LOG_KV("txsSize", txs->size());
 }
 
 void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _missedTxs,
-    std::function<void(Error::Ptr, bool)> _onVerifyFinished)
+    Block::Ptr _verifiedProposal, std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
     auto missedTxsSet =
         std::make_shared<std::set<HashType>>(_missedTxs->begin(), _missedTxs->end());
 
     m_config->ledger()->asyncGetBatchTxsByHashList(_missedTxs, false,
-        [this, missedTxsSet, _generatedNodeID, _onVerifyFinished](Error::Ptr _error,
-            TransactionsPtr _fetchedTxs, std::shared_ptr<std::map<std::string, MerkleProofPtr>>) {
+        [this, _verifiedProposal, missedTxsSet, _generatedNodeID, _onVerifyFinished](
+            Error::Ptr _error, TransactionsPtr _fetchedTxs,
+            std::shared_ptr<std::map<std::string, MerkleProofPtr>>) {
             // hit all the txs
             if (this->onGetMissedTxsFromLedger(
-                    *missedTxsSet, _error, _fetchedTxs, _onVerifyFinished) == 0)
+                    *missedTxsSet, _error, _fetchedTxs, _verifiedProposal, _onVerifyFinished) == 0)
             {
                 return;
             }
@@ -206,7 +220,8 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
             // fetch missed txs from the given peer
             auto ledgerMissedTxs =
                 std::make_shared<HashList>(missedTxsSet->begin(), missedTxsSet->end());
-            this->requestMissedTxsFromPeer(_generatedNodeID, ledgerMissedTxs, _onVerifyFinished);
+            this->requestMissedTxsFromPeer(
+                _generatedNodeID, ledgerMissedTxs, _verifiedProposal, _onVerifyFinished);
             SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: missing txs and fetch from the peer")
                             << LOG_KV("txsSize", ledgerMissedTxs->size())
                             << LOG_KV("peer", _generatedNodeID->shortHex());
@@ -214,7 +229,8 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
 }
 
 size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs, Error::Ptr _error,
-    TransactionsPtr _fetchedTxs, VerifyResponseCallback _onVerifyFinished)
+    TransactionsPtr _fetchedTxs, Block::Ptr _verifiedProposal,
+    VerifyResponseCallback _onVerifyFinished)
 {
     if (_error != nullptr)
     {
@@ -224,12 +240,7 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
         return _missedTxs.size();
     }
     // import and verify the transactions
-    bool enforceImport = false;
-    if (_onVerifyFinished)
-    {
-        enforceImport = true;
-    }
-    auto ret = this->importDownloadedTxs(m_config->nodeID(), _fetchedTxs, enforceImport);
+    auto ret = this->importDownloadedTxs(m_config->nodeID(), _fetchedTxs, _verifiedProposal);
     if (!ret)
     {
         SYNC_LOG(WARNING) << LOG_DESC("onGetMissedTxsFromLedger: verify tx failed");
@@ -258,7 +269,7 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
 }
 
 void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashListPtr _missedTxs,
-    std::function<void(Error::Ptr, bool)> _onVerifyFinished)
+    Block::Ptr _verifiedProposal, std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
     if (_missedTxs->size() == 0 && _onVerifyFinished)
     {
@@ -271,8 +282,8 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
     auto self = std::weak_ptr<TransactionSync>(shared_from_this());
     m_config->frontService()->asyncSendMessageByNodeID(ModuleID::TxsSync, _generatedNodeID,
         ref(*encodedData), m_config->networkTimeout(),
-        [self, _missedTxs, _onVerifyFinished](Error::Ptr _error, NodeIDPtr _nodeID,
-            bytesConstRef _data, const std::string&, SendResponseCallback) {
+        [self, _missedTxs, _verifiedProposal, _onVerifyFinished](Error::Ptr _error,
+            NodeIDPtr _nodeID, bytesConstRef _data, const std::string&, SendResponseCallback) {
             try
             {
                 auto transactionSync = self.lock();
@@ -280,23 +291,25 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
                 {
                     return;
                 }
-                bool enforceImport = false;
-                if (_onVerifyFinished)
-                {
-                    enforceImport = true;
-                }
-                transactionSync->verifyFetchedTxs(
-                    _error, _nodeID, _data, _missedTxs,
-                    [_onVerifyFinished](Error::Ptr _error, bool _result) {
+                transactionSync->verifyFetchedTxs(_error, _nodeID, _data, _missedTxs,
+                    _verifiedProposal,
+                    [_verifiedProposal, _onVerifyFinished](Error::Ptr _error, bool _result) {
                         if (!_onVerifyFinished)
                         {
                             return;
                         }
                         _onVerifyFinished(_error, _result);
-                        SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: response verify result")
-                                        << LOG_KV("_result", _result);
-                    },
-                    enforceImport);
+                        if (!_verifiedProposal || !(_verifiedProposal->blockHeader()))
+                        {
+                            return;
+                        }
+                        SYNC_LOG(DEBUG)
+                            << LOG_DESC("requestMissedTxs: response verify result")
+                            << LOG_KV("propIndex", _verifiedProposal->blockHeader()->number())
+                            << LOG_KV(
+                                   "propHash", _verifiedProposal->blockHeader()->hash().abridged())
+                            << LOG_KV("_result", _result);
+                    });
             }
             catch (std::exception const& e)
             {
@@ -310,7 +323,7 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
 }
 
 void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data,
-    HashListPtr _missedTxs, VerifyResponseCallback _onVerifyFinished, bool _enforceImport)
+    HashListPtr _missedTxs, Block::Ptr _verifiedProposal, VerifyResponseCallback _onVerifyFinished)
 {
     if (_error != nullptr)
     {
@@ -351,7 +364,7 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
         importDownloadedTxs(_nodeID, transactions);
         return;
     }
-    if (!importDownloadedTxs(_nodeID, transactions, _enforceImport))
+    if (!importDownloadedTxs(_nodeID, transactions, _verifiedProposal))
     {
         _onVerifyFinished(std::make_shared<Error>(CommonError::TxsSignatureVerifyFailed,
                               "invalid transaction for invalid signature or nonce or blockLimit"),
@@ -399,18 +412,18 @@ void TransactionSync::maintainDownloadingTransactions()
 }
 
 bool TransactionSync::importDownloadedTxs(
-    NodeIDPtr _fromNode, Block::Ptr _txsBuffer, bool _enforceImport)
+    NodeIDPtr _fromNode, Block::Ptr _txsBuffer, Block::Ptr _verifiedProposal)
 {
     auto txs = std::make_shared<Transactions>();
     for (size_t i = 0; i < _txsBuffer->transactionsSize(); i++)
     {
         txs->emplace_back(std::const_pointer_cast<Transaction>(_txsBuffer->transaction(i)));
     }
-    return importDownloadedTxs(_fromNode, txs, _enforceImport);
+    return importDownloadedTxs(_fromNode, txs, _verifiedProposal);
 }
 
 bool TransactionSync::importDownloadedTxs(
-    NodeIDPtr _fromNode, TransactionsPtr _txs, bool _enforceImport)
+    NodeIDPtr _fromNode, TransactionsPtr _txs, Block::Ptr _verifiedProposal)
 {
     if (_txs->size() == 0)
     {
@@ -418,8 +431,13 @@ bool TransactionSync::importDownloadedTxs(
     }
     auto txsSize = _txs->size();
     // Note: only need verify the signature for the transactions
-    std::atomic_bool verifySuccess = true;
+    bool enforceImport = false;
+    if (_verifiedProposal && _verifiedProposal->blockHeader())
+    {
+        enforceImport = true;
+    }
     // verify the transactions
+    std::atomic_bool verifySuccess = {true};
     tbb::parallel_for(
         tbb::blocked_range<size_t>(0, txsSize), [&](const tbb::blocked_range<size_t>& _r) {
             for (size_t i = _r.begin(); i < _r.end(); i++)
@@ -430,6 +448,11 @@ bool TransactionSync::importDownloadedTxs(
                     continue;
                 }
                 tx->appendKnownNode(_fromNode);
+                if (_verifiedProposal && _verifiedProposal->blockHeader())
+                {
+                    tx->setBatchId(_verifiedProposal->blockHeader()->number());
+                    tx->setBatchHash(_verifiedProposal->blockHeader()->hash());
+                }
                 if (m_config->txpoolStorage()->exist(tx->hash()))
                 {
                     continue;
@@ -448,7 +471,7 @@ bool TransactionSync::importDownloadedTxs(
                 }
             }
         });
-    if (!verifySuccess)
+    if (enforceImport && !verifySuccess)
     {
         return false;
     }
@@ -465,13 +488,16 @@ bool TransactionSync::importDownloadedTxs(
         // Note: when the transaction is used to reach a consensus, the transaction must be imported
         // into the txpool even if the txpool is full
         auto result = txpool->submitTransaction(
-            std::const_pointer_cast<Transaction>(tx), nullptr, _enforceImport);
+            std::const_pointer_cast<Transaction>(tx), nullptr, enforceImport);
         if (result != TransactionStatus::None)
         {
-            if (_enforceImport)
+            if (enforceImport)
             {
-                SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs: verify failed")
-                                << LOG_KV("tx", tx->hash().abridged());
+                SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs: verify proposal failed")
+                                << LOG_KV("tx", tx->hash().abridged()) << LOG_KV("result", result)
+                                << LOG_KV("propIndex", _verifiedProposal->blockHeader()->number())
+                                << LOG_KV("propHash",
+                                       _verifiedProposal->blockHeader()->hash().abridged());
                 return false;
             }
             SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs")
@@ -623,7 +649,7 @@ void TransactionSync::onPeerTxsStatus(NodeIDPtr _fromNode, TxsSyncMsgInterface::
     {
         return;
     }
-    requestMissedTxs(_fromNode, requestTxs, nullptr);
+    requestMissedTxs(_fromNode, requestTxs, nullptr, nullptr);
     SYNC_LOG(DEBUG) << LOG_DESC("onPeerTxsStatus") << LOG_KV("reqSize", requestTxs->size())
                     << LOG_KV("peerTxsSize", _txsStatus->txsHash().size())
                     << LOG_KV("peer", _fromNode->shortHex());

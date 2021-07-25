@@ -164,7 +164,7 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
                               << LOG_KV("totalTxs", txsSize)
                               << LOG_KV("missedTxs", missedTxs->size());
             txpool->m_transactionSync->requestMissedTxs(
-                _generatedNodeID, missedTxs, onVerifyFinishedWrapper);
+                _generatedNodeID, missedTxs, block, onVerifyFinishedWrapper);
         }
         catch (std::exception const& e)
         {
@@ -253,7 +253,7 @@ void TxPool::getTxsFromLocalLedger(HashListPtr _txsHash, HashListPtr _missedTxs,
             return;
         }
         auto sync = txpool->m_transactionSync;
-        sync->requestMissedTxs(nullptr, _missedTxs,
+        sync->requestMissedTxs(nullptr, _missedTxs, nullptr,
             [txpool, _txsHash, _onBlockFilled](Error::Ptr _error, bool _verifyResult) {
                 if (_error || !_verifyResult)
                 {
@@ -311,10 +311,11 @@ void TxPool::fillBlock(HashListPtr _txsHash,
 }
 
 
-void TxPool::asyncMarkTxs(
-    HashListPtr _txsHash, bool _sealedFlag, std::function<void(Error::Ptr)> _onRecvResponse)
+void TxPool::asyncMarkTxs(HashListPtr _txsHash, bool _sealedFlag,
+    bcos::protocol::BlockNumber _batchId, bcos::crypto::HashType const& _batchHash,
+    std::function<void(Error::Ptr)> _onRecvResponse)
 {
-    m_txpoolStorage->batchMarkTxs(*_txsHash, _sealedFlag);
+    m_txpoolStorage->batchMarkTxs(*_txsHash, _batchId, _batchHash, _sealedFlag);
     if (!_onRecvResponse)
     {
         return;
@@ -441,7 +442,9 @@ void TxPool::initSendResponseHandler()
         catch (std::exception const& e)
         {
             TXPOOL_LOG(WARNING) << LOG_DESC("sendResonse exception")
-                                << LOG_KV("error", boost::diagnostic_information(e));
+                                << LOG_KV("error", boost::diagnostic_information(e))
+                                << LOG_KV("uuid", _id) << LOG_KV("moduleID", _moduleID)
+                                << LOG_KV("peer", _dstNode->shortHex());
         }
     };
 }

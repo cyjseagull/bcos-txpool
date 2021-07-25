@@ -39,7 +39,7 @@ public:
     virtual void stop() = 0;
 
     virtual void requestMissedTxs(bcos::crypto::PublicPtr _generatedNodeID,
-        bcos::crypto::HashListPtr _missedTxs,
+        bcos::crypto::HashListPtr _missedTxs, bcos::protocol::Block::Ptr _verifiedProposal,
         std::function<void(Error::Ptr, bool)> _onVerifyFinished) = 0;
 
     virtual void onRecvSyncMessage(bcos::Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
