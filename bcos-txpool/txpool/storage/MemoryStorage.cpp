@@ -207,8 +207,7 @@ TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
     return TransactionStatus::None;
 }
 
-void MemoryStorage::preCommitTransaction(
-    bcos::protocol::Transaction::ConstPtr _tx, size_t _retryTime)
+void MemoryStorage::preCommitTransaction(Transaction::ConstPtr _tx, size_t _retryTime)
 {
     if (_retryTime > 3)
     {
@@ -265,7 +264,7 @@ void MemoryStorage::batchInsert(Transactions const& _txs)
     }
 }
 
-Transaction::ConstPtr MemoryStorage::removeWithoutLock(bcos::crypto::HashType const& _txHash)
+Transaction::ConstPtr MemoryStorage::removeWithoutLock(HashType const& _txHash)
 {
     if (!m_txsTable.count(_txHash))
     {
@@ -286,7 +285,7 @@ Transaction::ConstPtr MemoryStorage::removeWithoutLock(bcos::crypto::HashType co
     return tx;
 }
 
-Transaction::ConstPtr MemoryStorage::remove(bcos::crypto::HashType const& _txHash)
+Transaction::ConstPtr MemoryStorage::remove(HashType const& _txHash)
 {
     WriteGuard l(x_txpoolMutex);
     auto tx = removeWithoutLock(_txHash);
@@ -352,7 +351,11 @@ void MemoryStorage::notifyTxResult(
 // TODO: remove this, now just for bug tracing
 void MemoryStorage::printPendingTxs()
 {
-    if (utcTime() - m_blockNumberUpdatedTime <= 1000 * 20)
+    if (m_printed)
+    {
+        return;
+    }
+    if (utcTime() - m_blockNumberUpdatedTime <= 1000 * 50)
     {
         return;
     }
@@ -365,10 +368,12 @@ void MemoryStorage::printPendingTxs()
     for (auto item : m_txsTable)
     {
         auto tx = item.second;
-        TXPOOL_LOG(DEBUG) << LOG_DESC("printPendingTxs") << LOG_KV("hash", tx->hash().abridged())
-                          << LOG_KV("id", tx->batchId())
-                          << LOG_KV("hash", tx->batchHash().abridged());
+        TXPOOL_LOG(DEBUG) << LOG_KV("hash", tx->hash().abridged()) << LOG_KV("id", tx->batchId())
+                          << LOG_KV("hash", tx->batchHash().abridged())
+                          << LOG_KV("seal", tx->sealed());
     }
+    TXPOOL_LOG(DEBUG) << LOG_DESC("printPendingTxs for some txs unhandle finish");
+    m_printed = true;
 }
 void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults const& _txsResult)
 {
@@ -390,6 +395,11 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
                 succCount++;
                 nonceList->emplace_back(tx->nonce());
             }
+        }
+        // Note: must update the blockNumber after the txs removed
+        if (_batchId > m_blockNumber)
+        {
+            m_blockNumber = _batchId;
         }
     }
     TXPOOL_LOG(INFO) << LOG_DESC("batchRemove txs success")
@@ -480,9 +490,13 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
         {
             continue;
         }
+        // the transaction has already been sealed for newer proposal
         if (_avoidDuplicate && tx->sealed())
         {
-            continue;
+            if (tx->batchId() == -1 || tx->batchId() > m_blockNumber)
+            {
+                continue;
+            }
         }
         if (tx->systemTx())
         {
@@ -497,6 +511,8 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
             m_sealedTxsSize++;
         }
         tx->setSealed(true);
+        tx->setBatchId(-1);
+        tx->setBatchHash(HashType());
 #if FISCO_DEBUG
         // TODO: remove this, now just for bug tracing
         TXPOOL_LOG(INFO) << LOG_DESC("fetch ") << tx->hash().abridged();
@@ -600,8 +616,8 @@ HashListPtr MemoryStorage::filterUnknownTxs(HashList const& _txsHashList, NodeID
     return unknownTxsList;
 }
 
-void MemoryStorage::batchMarkTxs(bcos::crypto::HashList const& _txsHashList,
-    bcos::protocol::BlockNumber _batchId, bcos::crypto::HashType const& _batchHash, bool _sealFlag)
+void MemoryStorage::batchMarkTxs(
+    HashList const& _txsHashList, BlockNumber _batchId, HashType const& _batchHash, bool _sealFlag)
 {
     ReadGuard l(x_txpoolMutex);
     for (auto txHash : _txsHashList)
@@ -655,7 +671,7 @@ void MemoryStorage::batchMarkAllTxs(bool _sealFlag)
         }
         if (!_sealFlag)
         {
-            tx->setBatchId(0);
+            tx->setBatchId(-1);
             tx->setBatchHash(HashType());
         }
     }

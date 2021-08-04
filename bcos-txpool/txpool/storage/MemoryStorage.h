@@ -140,6 +140,8 @@ private:
 
     size_t c_maxRetryTime = 3;
 
+    std::atomic<bcos::protocol::BlockNumber> m_blockNumber = {0};
+    std::atomic_bool m_printed = {false};
     int64_t m_blockNumberUpdatedTime;
 };
 }  // namespace txpool
