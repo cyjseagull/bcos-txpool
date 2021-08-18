@@ -204,18 +204,6 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, std::string const& _uu
     _onRecv(nullptr);
 }
 
-void TxPool::notifyConnectedNodes(
-    NodeIDSet const& _connectedNodes, std::function<void(Error::Ptr)> _onRecvResponse)
-{
-    m_transactionSync->config()->setConnectedNodeList(_connectedNodes);
-    if (!_onRecvResponse)
-    {
-        return;
-    }
-    _onRecvResponse(nullptr);
-}
-
-
 void TxPool::notifyConsensusNodeList(
     ConsensusNodeList const& _consensusNodeList, std::function<void(Error::Ptr)> _onRecvResponse)
 {

@@ -500,7 +500,7 @@ bool TransactionSync::importDownloadedTxs(
                                        _verifiedProposal->blockHeader()->hash().abridged());
                 return false;
             }
-            SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs")
+            SYNC_LOG(TRACE) << LOG_BADGE("importDownloadedTxs")
                             << LOG_DESC("Import transaction into txpool failed")
                             << LOG_KV("errorCode", result) << LOG_KV("tx", tx->hash().abridged());
             continue;
