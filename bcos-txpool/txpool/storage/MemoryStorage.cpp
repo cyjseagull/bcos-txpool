@@ -480,7 +480,7 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
             continue;
         }
         // blockLimit expired
-        if (result == TransactionStatus::BlockLimitCheckFail)
+        if (result == TransactionStatus::BlockLimitCheckFail && !tx->sealed())
         {
             m_invalidTxs.insert(txHash);
             m_invalidNonces.insert(tx->nonce());
