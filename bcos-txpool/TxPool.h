@@ -37,6 +37,7 @@ public:
       : m_config(_config), m_txpoolStorage(_txpoolStorage), m_transactionSync(_transactionSync)
     {
         m_worker = std::make_shared<ThreadPool>("submitter", _config->verifyWorkerNum());
+        m_verifier = std::make_shared<ThreadPool>("verifier", 1);
     }
 
     ~TxPool() override { stop(); }
@@ -154,6 +155,7 @@ private:
         m_sendResponseHandler;
 
     ThreadPool::Ptr m_worker;
+    ThreadPool::Ptr m_verifier;
     std::atomic_bool m_running = {false};
 };
 }  // namespace txpool

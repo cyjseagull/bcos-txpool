@@ -120,8 +120,10 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
         }
         _onVerifyFinished(_error, _ret);
     };
+    // Note: here must has thread pool for lock in the callback
+    // use single thread here to decrease thread competition
     auto self = std::weak_ptr<TxPool>(shared_from_this());
-    m_worker->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
+    m_verifier->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
         try
         {
             auto txpool = self.lock();
