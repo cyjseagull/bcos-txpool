@@ -107,8 +107,12 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
     auto block = m_config->blockFactory()->createBlock(_block);
+    TXPOOL_LOG(INFO) << LOG_DESC("begin asyncVerifyBlock")
+                     << LOG_KV(
+                            "consNum", block->blockHeader() ? block->blockHeader()->number() : -1);
+
     auto onVerifyFinishedWrapper = [_onVerifyFinished, block](Error::Ptr _error, bool _ret) {
-        TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock")
+        TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock finished")
                          << LOG_KV("consNum",
                                 block->blockHeader() ? block->blockHeader()->number() : -1)
                          << LOG_KV("code", _error ? _error->errorCode() : 0)
