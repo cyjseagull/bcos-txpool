@@ -37,6 +37,7 @@ public:
       : m_config(_config), m_txpoolStorage(_txpoolStorage), m_transactionSync(_transactionSync)
     {
         m_worker = std::make_shared<ThreadPool>("submitter", _config->verifyWorkerNum());
+        m_verifier = std::make_shared<ThreadPool>("verifier", 4);
     }
 
     ~TxPool() override { stop(); }
@@ -61,9 +62,6 @@ public:
     void asyncNotifyTxsSyncMessage(bcos::Error::Ptr _error, std::string const& _uuid,
         bcos::crypto::NodeIDPtr _nodeID, bytesConstRef _data,
         std::function<void(Error::Ptr _error)> _onRecv) override;
-
-    void notifyConnectedNodes(bcos::crypto::NodeIDSet const& _connectedNodes,
-        std::function<void(Error::Ptr)> _onRecvResponse) override;
 
     void notifyConsensusNodeList(bcos::consensus::ConsensusNodeList const& _consensusNodeList,
         std::function<void(Error::Ptr)> _onRecvResponse) override;
@@ -157,6 +155,7 @@ private:
         m_sendResponseHandler;
 
     ThreadPool::Ptr m_worker;
+    ThreadPool::Ptr m_verifier;
     std::atomic_bool m_running = {false};
 };
 }  // namespace txpool

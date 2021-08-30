@@ -259,6 +259,7 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     std::cout << "######### ayncSeal with invalid blocklimit" << std::endl;
     std::cout << "##### origin txsSize:" << _txpoolStorage->size() << std::endl;
 
+    _txpool->asyncResetTxPool(nullptr);
     _txpool->asyncSealTxs(
         100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
             BOOST_CHECK(_error == nullptr);

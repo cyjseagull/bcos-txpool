@@ -107,8 +107,12 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
     auto block = m_config->blockFactory()->createBlock(_block);
+    TXPOOL_LOG(INFO) << LOG_DESC("begin asyncVerifyBlock")
+                     << LOG_KV(
+                            "consNum", block->blockHeader() ? block->blockHeader()->number() : -1);
+
     auto onVerifyFinishedWrapper = [_onVerifyFinished, block](Error::Ptr _error, bool _ret) {
-        TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock")
+        TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock finished")
                          << LOG_KV("consNum",
                                 block->blockHeader() ? block->blockHeader()->number() : -1)
                          << LOG_KV("code", _error ? _error->errorCode() : 0)
@@ -120,8 +124,10 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
         }
         _onVerifyFinished(_error, _ret);
     };
+    // Note: here must has thread pool for lock in the callback
+    // use single thread here to decrease thread competition
     auto self = std::weak_ptr<TxPool>(shared_from_this());
-    m_worker->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
+    m_verifier->enqueue([self, _generatedNodeID, block, onVerifyFinishedWrapper]() {
         try
         {
             auto txpool = self.lock();
@@ -203,18 +209,6 @@ void TxPool::asyncNotifyTxsSyncMessage(Error::Ptr _error, std::string const& _uu
     }
     _onRecv(nullptr);
 }
-
-void TxPool::notifyConnectedNodes(
-    NodeIDSet const& _connectedNodes, std::function<void(Error::Ptr)> _onRecvResponse)
-{
-    m_transactionSync->config()->setConnectedNodeList(_connectedNodes);
-    if (!_onRecvResponse)
-    {
-        return;
-    }
-    _onRecvResponse(nullptr);
-}
-
 
 void TxPool::notifyConsensusNodeList(
     ConsensusNodeList const& _consensusNodeList, std::function<void(Error::Ptr)> _onRecvResponse)

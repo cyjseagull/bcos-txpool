@@ -328,7 +328,7 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     if (_error != nullptr)
     {
         SYNC_LOG(WARNING) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
-                          << LOG_KV("peer", _nodeID->shortHex())
+                          << LOG_KV("peer", _nodeID ? _nodeID->shortHex() : "unknown")
                           << LOG_KV("missedTxsSize", _missedTxs->size())
                           << LOG_KV("errorCode", _error->errorCode())
                           << LOG_KV("errorMsg", _error->errorMessage());
@@ -500,7 +500,7 @@ bool TransactionSync::importDownloadedTxs(
                                        _verifiedProposal->blockHeader()->hash().abridged());
                 return false;
             }
-            SYNC_LOG(DEBUG) << LOG_BADGE("importDownloadedTxs")
+            SYNC_LOG(TRACE) << LOG_BADGE("importDownloadedTxs")
                             << LOG_DESC("Import transaction into txpool failed")
                             << LOG_KV("errorCode", result) << LOG_KV("tx", tx->hash().abridged());
             continue;

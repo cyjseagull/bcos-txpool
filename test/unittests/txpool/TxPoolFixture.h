@@ -148,7 +148,7 @@ private:
             nodeIdSet.insert(node->nodeID());
         }
         m_txpool->transactionSync()->config()->setConnectedNodeList(nodeIdSet);
-        m_txpool->notifyConnectedNodes(nodeIdSet, nullptr);
+        m_txpool->transactionSync()->config()->notifyConnectedNodes(nodeIdSet, nullptr);
     }
 
 private:
