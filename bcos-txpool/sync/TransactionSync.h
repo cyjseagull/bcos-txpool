@@ -74,8 +74,8 @@ protected:
     virtual void onPeerTxsStatus(
         bcos::crypto::NodeIDPtr _fromNode, TxsSyncMsgInterface::Ptr _txsStatus);
 
-    virtual void onReceiveTxsRequest(
-        TxsSyncMsgInterface::Ptr _txsRequest, SendResponseCallback _sendResponse);
+    virtual void onReceiveTxsRequest(TxsSyncMsgInterface::Ptr _txsRequest,
+        SendResponseCallback _sendResponse, bcos::crypto::PublicPtr _peer);
 
     // functions called by requestMissedTxs
     virtual void verifyFetchedTxs(Error::Ptr _error, bcos::crypto::NodeIDPtr _nodeID,
