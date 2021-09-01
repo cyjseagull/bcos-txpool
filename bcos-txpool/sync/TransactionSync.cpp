@@ -165,10 +165,10 @@ void TransactionSync::onReceiveTxsRequest(TxsSyncMsgInterface::Ptr _txsRequest,
     // Note: here assume that all the transaction should be hit in the txpool
     if (missedTxs.size() > 0)
     {
-        SYNC_LOG(WARNING) << LOG_DESC("onReceiveTxsRequest: transaction missing")
-                          << LOG_KV("missedTxsSize", missedTxs.size())
-                          << LOG_KV("peer", _peer ? _peer->shortHex() : "unknown")
-                          << LOG_KV("nodeId", m_config->nodeID()->shortHex());
+        SYNC_LOG(DEBUG) << LOG_DESC("onReceiveTxsRequest: transaction missing")
+                        << LOG_KV("missedTxsSize", missedTxs.size())
+                        << LOG_KV("peer", _peer ? _peer->shortHex() : "unknown")
+                        << LOG_KV("nodeId", m_config->nodeID()->shortHex());
 #if FISCO_DEBUG
         // TODO: remove this, now just for bug tracing
         for (auto txHash : missedTxs)
