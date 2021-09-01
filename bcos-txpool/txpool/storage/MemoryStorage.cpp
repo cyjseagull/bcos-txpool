@@ -624,8 +624,8 @@ void MemoryStorage::batchMarkTxs(
     {
         if (!m_txsTable.count(txHash))
         {
-            TXPOOL_LOG(WARNING) << LOG_DESC("batchMarkTxs: missing transaction")
-                                << LOG_KV("tx", txHash.abridged()) << LOG_KV("sealFlag", _sealFlag);
+            TXPOOL_LOG(TRACE) << LOG_DESC("batchMarkTxs: missing transaction")
+                              << LOG_KV("tx", txHash.abridged()) << LOG_KV("sealFlag", _sealFlag);
             continue;
         }
         auto tx = m_txsTable[txHash];
