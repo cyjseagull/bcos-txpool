@@ -78,8 +78,9 @@ bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
     // notify txResult
     auto txResult = m_config->txResultFactory()->createTxSubmitResult(
         HashType(), (int32_t)TransactionStatus::RequestNotBelongToTheGroup);
-    _txSubmitCallback(nullptr, txResult);
-    TXPOOL_LOG(WARNING) << LOG_DESC("Do not send transactions to nodes that are not in the group");
+    auto errorMsg = "Do not send transactions to nodes that are not in the group";
+    _txSubmitCallback(std::make_shared<Error>((int32_t)txResult->status(), errorMsg), txResult);
+    TXPOOL_LOG(WARNING) << LOG_DESC(errorMsg);
     return false;
 }
 
