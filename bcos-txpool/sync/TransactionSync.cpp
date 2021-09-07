@@ -329,11 +329,11 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
 {
     if (_error != nullptr)
     {
-        SYNC_LOG(WARNING) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
-                          << LOG_KV("peer", _nodeID ? _nodeID->shortHex() : "unknown")
-                          << LOG_KV("missedTxsSize", _missedTxs->size())
-                          << LOG_KV("errorCode", _error->errorCode())
-                          << LOG_KV("errorMsg", _error->errorMessage());
+        SYNC_LOG(INFO) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
+                       << LOG_KV("peer", _nodeID ? _nodeID->shortHex() : "unknown")
+                       << LOG_KV("missedTxsSize", _missedTxs->size())
+                       << LOG_KV("errorCode", _error->errorCode())
+                       << LOG_KV("errorMsg", _error->errorMessage());
         _onVerifyFinished(_error, false);
         return;
     }
@@ -355,17 +355,17 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     auto transactions = m_config->blockFactory()->createBlock(txsResponse->txsData(), true, false);
     if (_missedTxs->size() != transactions->transactionsSize())
     {
-        SYNC_LOG(WARNING) << LOG_DESC("verifyFetchedTxs failed")
-                          << LOG_KV("expectedTxs", _missedTxs->size())
-                          << LOG_KV("fetchedTxs", transactions->transactionsSize())
-                          << LOG_KV(
-                                 "hash", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+        SYNC_LOG(INFO) << LOG_DESC("verifyFetchedTxs failed")
+                       << LOG_KV("expectedTxs", _missedTxs->size())
+                       << LOG_KV("fetchedTxs", transactions->transactionsSize())
+                       << LOG_KV("peer", _nodeID->shortHex())
+                       << LOG_KV("hash", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
                                              _verifiedProposal->blockHeader()->hash().abridged() :
                                              "unknown")
-                          << LOG_KV("consNum",
-                                 (_verifiedProposal && _verifiedProposal->blockHeader()) ?
-                                     _verifiedProposal->blockHeader()->number() :
-                                     -1);
+                       << LOG_KV(
+                              "consNum", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+                                             _verifiedProposal->blockHeader()->number() :
+                                             -1);
         // response the verify result
         _onVerifyFinished(
             std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),

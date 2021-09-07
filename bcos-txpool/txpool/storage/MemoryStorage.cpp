@@ -629,6 +629,10 @@ void MemoryStorage::batchMarkTxs(
             continue;
         }
         auto tx = m_txsTable[txHash];
+        if (!tx)
+        {
+            continue;
+        }
         // the tx has already been re-sealed, can not enforce unseal
         if (tx->batchHash() != HashType() && tx->batchHash() != _batchHash && !_sealFlag)
         {
@@ -665,10 +669,11 @@ void MemoryStorage::batchMarkAllTxs(bool _sealFlag)
     for (auto item : m_txsTable)
     {
         auto tx = item.second;
-        if (tx)
+        if (!tx)
         {
-            tx->setSealed(_sealFlag);
+            continue;
         }
+        tx->setSealed(_sealFlag);
         if (!_sealFlag)
         {
             tx->setBatchId(-1);
@@ -734,4 +739,36 @@ void MemoryStorage::notifyUnsealedTxsSize(size_t _retryTime)
         }
         this->notifyUnsealedTxsSize((_retryTime + 1));
     });
+}
+
+std::shared_ptr<HashList> MemoryStorage::batchVerifyProposal(Block::Ptr _block)
+{
+    auto missedTxs = std::make_shared<HashList>();
+    auto txsSize = _block->transactionsHashSize();
+    if (txsSize == 0)
+    {
+        return missedTxs;
+    }
+    ReadGuard l(x_txpoolMutex);
+    for (size_t i = 0; i < txsSize; i++)
+    {
+        auto txHash = _block->transactionHash(i);
+        if (!(m_txsTable.count(txHash)))
+        {
+            missedTxs->emplace_back(txHash);
+        }
+    }
+    return missedTxs;
+}
+bool MemoryStorage::batchVerifyProposal(std::shared_ptr<HashList> _txsHashList)
+{
+    ReadGuard l(x_txpoolMutex);
+    for (auto const& txHash : *_txsHashList)
+    {
+        if (!(m_txsTable.count(txHash)))
+        {
+            return false;
+        }
+    }
+    return true;
 }

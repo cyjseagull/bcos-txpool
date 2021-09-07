@@ -93,6 +93,11 @@ public:
 
     void printPendingTxs() override;
 
+    std::shared_ptr<bcos::crypto::HashList> batchVerifyProposal(
+        bcos::protocol::Block::Ptr _block) override;
+
+    bool batchVerifyProposal(std::shared_ptr<bcos::crypto::HashList> _txsHashList) override;
+
 protected:
     bcos::protocol::TransactionStatus enforceSubmitTransaction(
         bcos::protocol::Transaction::Ptr _tx);
