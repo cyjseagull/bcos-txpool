@@ -49,7 +49,7 @@ public:
         bytesPointer _txData, bcos::protocol::TxSubmitCallback _txSubmitCallback) override;
 
     void asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
-        std::function<void(Error::Ptr, bcos::crypto::HashListPtr, bcos::crypto::HashListPtr)>
+        std::function<void(Error::Ptr, bcos::protocol::Block::Ptr, bcos::protocol::Block::Ptr)>
             _sealCallback) override;
 
     void asyncNotifyBlockResult(bcos::protocol::BlockNumber _blockNumber,

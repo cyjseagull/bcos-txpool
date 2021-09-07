@@ -84,10 +84,10 @@ bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
 }
 
 void TxPool::asyncSealTxs(size_t _txsLimit, TxsHashSetPtr _avoidTxs,
-    std::function<void(Error::Ptr, HashListPtr, HashListPtr)> _sealCallback)
+    std::function<void(Error::Ptr, Block::Ptr, Block::Ptr)> _sealCallback)
 {
-    auto fetchedTxs = std::make_shared<HashList>();
-    auto sysTxs = std::make_shared<HashList>();
+    auto fetchedTxs = m_config->blockFactory()->createBlock();
+    auto sysTxs = m_config->blockFactory()->createBlock();
     m_txpoolStorage->batchFetchTxs(fetchedTxs, sysTxs, _txsLimit, _avoidTxs, true);
     _sealCallback(nullptr, fetchedTxs, sysTxs);
 }
