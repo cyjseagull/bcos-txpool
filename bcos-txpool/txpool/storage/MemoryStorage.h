@@ -68,7 +68,7 @@ public:
         bcos::crypto::HashList& _missedTxs, bcos::crypto::HashList const& _txsList) override;
 
     bcos::protocol::ConstTransactionsPtr fetchNewTxs(size_t _txsLimit) override;
-    void batchFetchTxs(bcos::crypto::HashListPtr _txsList, bcos::crypto::HashListPtr _sysTxsList,
+    void batchFetchTxs(bcos::protocol::Block::Ptr _txsList, bcos::protocol::Block::Ptr _sysTxsList,
         size_t _txsLimit, TxsHashSetPtr _avoidTxs, bool _avoidDuplicate = true) override;
 
     bool exist(bcos::crypto::HashType const& _txHash) override

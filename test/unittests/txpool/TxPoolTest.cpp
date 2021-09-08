@@ -43,12 +43,14 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     auto blockHeader =
         _faker->txpool()->txpoolConfig()->blockFactory()->blockHeaderFactory()->createBlockHeader();
     block->setBlockHeader(blockHeader);
+    auto blockFactory = _faker->txpool()->txpoolConfig()->blockFactory();
     HashListPtr txsHash = std::make_shared<HashList>();
     for (size_t i = 0; i < 10; i++)
     {
         auto txHash = _cryptoSuite->hashImpl()->hash(std::to_string(i));
+        auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
         txsHash->emplace_back(txHash);
-        block->appendTransactionHash(txHash);
+        block->appendTransactionMetaData(txMetaData);
     }
     bool finish = false;
     _txpool->asyncFillBlock(txsHash, [&](Error::Ptr _error, TransactionsPtr) {
@@ -86,7 +88,9 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     for (auto tx : *txs)
     {
         txsHash->emplace_back(tx->hash());
-        block->appendTransactionHash(tx->hash());
+        auto txMetaData =
+            blockFactory->createTransactionMetaData(tx->hash(), tx->hash().abridged());
+        block->appendTransactionMetaData(txMetaData);
     }
     finish = false;
     _txpool->asyncFillBlock(txsHash, [&](Error::Ptr _error, TransactionsPtr _fetchedTxs) {
@@ -121,7 +125,8 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     // case3: with some txs hitted
     auto txHash = _cryptoSuite->hashImpl()->hash("test");
     txsHash->emplace_back(txHash);
-    block->appendTransactionHash(txHash);
+    auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+    block->appendTransactionMetaData(txMetaData);
 
     finish = false;
     _txpool->asyncFillBlock(txsHash, [&](Error::Ptr _error, TransactionsPtr) {
@@ -155,13 +160,16 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     // asyncSealTxs
     auto originTxsSize = _txpoolStorage->size();
     size_t txsLimit = 10;
-    HashListPtr sealedTxs;
+    HashListPtr sealedTxs = std::make_shared<HashList>();
     bool finish = false;
     _txpool->asyncSealTxs(
-        txsLimit, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+        txsLimit, nullptr, [&](Error::Ptr _error, Block::Ptr _txsMetaDataList, Block::Ptr) {
             BOOST_CHECK(_error == nullptr);
-            BOOST_CHECK(_txsHash->size() == txsLimit);
-            sealedTxs = _txsHash;
+            BOOST_CHECK(_txsMetaDataList->transactionsMetaDataSize() == txsLimit);
+            for (size_t i = 0; i < _txsMetaDataList->transactionsMetaDataSize(); i++)
+            {
+                sealedTxs->emplace_back(_txsMetaDataList->transactionHash(i));
+            }
             BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
             finish = true;
         });
@@ -172,13 +180,14 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     // seal again to fetch all unsealed txs
     finish = false;
     _txpool->asyncSealTxs(
-        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+        100000, nullptr, [&](Error::Ptr _error, Block::Ptr _txsMetaDataList, Block::Ptr) {
             BOOST_CHECK(_error == nullptr);
-            BOOST_CHECK(_txsHash->size() == originTxsSize - txsLimit);
+            BOOST_CHECK(_txsMetaDataList->transactionsMetaDataSize() == (originTxsSize - txsLimit));
             BOOST_CHECK(_txpoolStorage->size() == originTxsSize);
             std::set<HashType> txsSet(sealedTxs->begin(), sealedTxs->end());
-            for (auto const& hash : *_txsHash)
+            for (size_t i = 0; i < _txsMetaDataList->transactionsMetaDataSize(); i++)
             {
+                auto const& hash = _txsMetaDataList->transactionHash(i);
                 BOOST_CHECK(!txsSet.count(hash));
             }
             finish = true;
@@ -201,9 +210,10 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     // seal again
     finish = false;
     _txpool->asyncSealTxs(
-        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+        100000, nullptr, [&](Error::Ptr _error, Block::Ptr _txsMetaDataList, Block::Ptr) {
             BOOST_CHECK(_error == nullptr);
-            BOOST_CHECK(_txsHash->size() == sealedTxs->size());
+            BOOST_CHECK(_txsMetaDataList->transactionsMetaDataSize() == sealedTxs->size());
+            BOOST_CHECK(_txsMetaDataList->transactionsHashSize() == sealedTxs->size());
             finish = true;
         });
     while (!finish)
@@ -261,9 +271,10 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
 
     _txpool->asyncResetTxPool(nullptr);
     _txpool->asyncSealTxs(
-        100000, nullptr, [&](Error::Ptr _error, HashListPtr _txsHash, HashListPtr) {
+        100000, nullptr, [&](Error::Ptr _error, Block::Ptr _txsMetaDataList, Block::Ptr) {
             BOOST_CHECK(_error == nullptr);
-            BOOST_CHECK(_txsHash->size() == 0);
+            BOOST_CHECK(_txsMetaDataList->transactionsMetaDataSize() == 0);
+            BOOST_CHECK(_txsMetaDataList->transactionsHashSize() == 0);
             finish = true;
         });
     while (!finish || (_txpoolStorage->size() > 0))

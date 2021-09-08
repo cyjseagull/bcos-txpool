@@ -172,13 +172,16 @@ void testTransactionSync(bool _onlyTxsStatus = false)
     auto newTxsSize = 10;
     importTransactions(newTxsSize, cryptoSuite, syncPeer);
     // the syncPeer sealTxs
-    HashListPtr txsHash;
+    HashListPtr txsHash = std::make_shared<HashList>();
     bool finish = false;
     syncPeer->txpool()->asyncSealTxs(
-        100000, nullptr, [&](Error::Ptr _error, HashListPtr _fetchedTxs, HashListPtr) {
+        100000, nullptr, [&](Error::Ptr _error, Block::Ptr _fetchedTxs, Block::Ptr) {
             BOOST_CHECK(_error == nullptr);
             // BOOST_CHECK(_fetchedTxs->size() == syncPeer->txpool()->txpoolStorage()->size());
-            txsHash = _fetchedTxs;
+            for (size_t i = 0; i < _fetchedTxs->transactionsMetaDataSize(); i++)
+            {
+                txsHash->emplace_back(_fetchedTxs->transactionHash(i));
+            }
             finish = true;
         });
     while (!finish)
@@ -186,10 +189,12 @@ void testTransactionSync(bool _onlyTxsStatus = false)
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     // assume the faker verify the syncPeer generated proposal
-    auto block = faker->txpool()->txpoolConfig()->blockFactory()->createBlock();
+    auto blockFactory = faker->txpool()->txpoolConfig()->blockFactory();
+    auto block = blockFactory->createBlock();
     for (auto const& txHash : *txsHash)
     {
-        block->appendTransactionHash(txHash);
+        auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+        block->appendTransactionMetaData(txMetaData);
     }
     auto encodedData = std::make_shared<bytes>();
     block->encode(*encodedData);

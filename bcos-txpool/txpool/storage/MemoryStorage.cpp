@@ -456,9 +456,10 @@ ConstTransactionsPtr MemoryStorage::fetchNewTxs(size_t _txsLimit)
     return fetchedTxs;
 }
 
-void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList, size_t _txsLimit,
+void MemoryStorage::batchFetchTxs(Block::Ptr _txsList, Block::Ptr _sysTxsList, size_t _txsLimit,
     TxsHashSetPtr _avoidTxs, bool _avoidDuplicate)
 {
+    auto blockFactory = m_config->blockFactory();
     ReadGuard l(x_txpoolMutex);
     for (auto it : m_txsTable)
     {
@@ -498,13 +499,15 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
                 continue;
             }
         }
+        auto txMetaData =
+            blockFactory->createTransactionMetaData(tx->hash(), std::string(tx->to()));
         if (tx->systemTx())
         {
-            _sysTxsList->emplace_back(tx->hash());
+            _sysTxsList->appendTransactionMetaData(txMetaData);
         }
         else
         {
-            _txsList->emplace_back(tx->hash());
+            _txsList->appendTransactionMetaData(txMetaData);
         }
         if (!tx->sealed())
         {
@@ -517,7 +520,8 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
         // TODO: remove this, now just for bug tracing
         TXPOOL_LOG(INFO) << LOG_DESC("fetch ") << tx->hash().abridged();
 #endif
-        if ((_txsList->size() + _sysTxsList->size()) >= _txsLimit)
+        if ((_txsList->transactionsMetaDataSize() + _sysTxsList->transactionsMetaDataSize()) >=
+            _txsLimit)
         {
             break;
         }
