@@ -53,7 +53,8 @@ TransactionStatus LedgerNonceChecker::checkBlockLimit(bcos::protocol::Transactio
         NONCECHECKER_LOG(WARNING) << LOG_DESC("InvalidBlockLimit")
                                   << LOG_KV("blkLimit", _tx->blockLimit())
                                   << LOG_KV("blockLimit", m_blockLimit)
-                                  << LOG_KV("curBlk", m_blockNumber) << LOG_KV("tx", _tx->hash());
+                                  << LOG_KV("curBlk", m_blockNumber)
+                                  << LOG_KV("tx", _tx->hash().abridged());
         return TransactionStatus::BlockLimitCheckFail;
     }
     return TransactionStatus::None;
