@@ -500,10 +500,7 @@ void MemoryStorage::batchFetchTxs(HashListPtr _txsList, HashListPtr _sysTxsList,
         // the transaction has already been sealed for newer proposal
         if (_avoidDuplicate && tx->sealed())
         {
-            if (tx->batchId() == -1 || tx->batchId() > m_blockNumber)
-            {
-                continue;
-            }
+            continue;
         }
         if (tx->systemTx())
         {
