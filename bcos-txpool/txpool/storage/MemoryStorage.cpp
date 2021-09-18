@@ -562,8 +562,8 @@ void MemoryStorage::removeInvalidTxs()
                     memoryStorage->m_config->txPoolNonceChecker()->batchRemove(
                         memoryStorage->m_invalidNonces);
                 });
-            TXPOOL_LOG(DEBUG) << LOG_DESC("removeInvalidTxs")
-                              << LOG_KV("size", memoryStorage->m_invalidTxs.size());
+            TXPOOL_LOG(INFO) << LOG_DESC("removeInvalidTxs")
+                             << LOG_KV("size", memoryStorage->m_invalidTxs.size());
             memoryStorage->m_invalidTxs.clear();
             memoryStorage->m_invalidNonces.clear();
         }

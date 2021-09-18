@@ -198,6 +198,37 @@ void TransactionSync::onReceiveTxsRequest(TxsSyncMsgInterface::Ptr _txsRequest,
 void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _missedTxs,
     Block::Ptr _verifiedProposal, std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
+    // fetch txs from the ledger
+    if (!_generatedNodeID)
+    {
+        auto missedTxsSet =
+            std::make_shared<std::set<HashType>>(_missedTxs->begin(), _missedTxs->end());
+        m_config->ledger()->asyncGetBatchTxsByHashList(_missedTxs, false,
+            [this, _verifiedProposal, missedTxsSet, _generatedNodeID, _onVerifyFinished](
+                Error::Ptr _error, TransactionsPtr _fetchedTxs,
+                std::shared_ptr<std::map<std::string, MerkleProofPtr>>) {
+                // hit all the txs
+                if (this->onGetMissedTxsFromLedger(*missedTxsSet, _error, _fetchedTxs,
+                        _verifiedProposal, _onVerifyFinished) == 0)
+                {
+                    return;
+                }
+                _onVerifyFinished(
+                    std::make_shared<Error>(CommonError::TransactionsMissing,
+                        "requestMissedTxs failed from the ledger for Transaction missing"),
+                    false);
+            });
+        return;
+    }
+
+    // fetch txs from the peer
+    this->requestMissedTxsFromPeer(
+        _generatedNodeID, _missedTxs, _verifiedProposal, _onVerifyFinished);
+    SYNC_LOG(INFO) << LOG_DESC("requestMissedTxs: missing txs and fetch from the peer")
+                   << LOG_KV("txsSize", _missedTxs->size())
+                   << LOG_KV("peer", _generatedNodeID->shortHex());
+
+#if 0
     auto missedTxsSet =
         std::make_shared<std::set<HashType>>(_missedTxs->begin(), _missedTxs->end());
 
@@ -224,10 +255,11 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
                 std::make_shared<HashList>(missedTxsSet->begin(), missedTxsSet->end());
             this->requestMissedTxsFromPeer(
                 _generatedNodeID, ledgerMissedTxs, _verifiedProposal, _onVerifyFinished);
-            SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: missing txs and fetch from the peer")
-                            << LOG_KV("txsSize", ledgerMissedTxs->size())
-                            << LOG_KV("peer", _generatedNodeID->shortHex());
+            SYNC_LOG(INFO) << LOG_DESC("requestMissedTxs: missing txs and fetch from the peer")
+                           << LOG_KV("txsSize", ledgerMissedTxs->size())
+                           << LOG_KV("peer", _generatedNodeID->shortHex());
         });
+#endif
 }
 
 size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs, Error::Ptr _error,
@@ -264,9 +296,11 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
     }
     if (_missedTxs.size() == 0 && _onVerifyFinished)
     {
-        SYNC_LOG(DEBUG) << LOG_DESC("onGetMissedTxsFromLedger: hit all transactions");
+        SYNC_LOG(INFO) << LOG_DESC("onGetMissedTxsFromLedger: hit all transactions");
         _onVerifyFinished(nullptr, true);
     }
+    SYNC_LOG(INFO) << LOG_DESC("onGetMissedTxsFromLedger: miss some transactions")
+                   << LOG_KV("missedTxs", _missedTxs.size());
     return _missedTxs.size();
 }
 
