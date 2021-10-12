@@ -53,7 +53,8 @@ TransactionStatus LedgerNonceChecker::checkBlockLimit(bcos::protocol::Transactio
         NONCECHECKER_LOG(WARNING) << LOG_DESC("InvalidBlockLimit")
                                   << LOG_KV("blkLimit", _tx->blockLimit())
                                   << LOG_KV("blockLimit", m_blockLimit)
-                                  << LOG_KV("curBlk", m_blockNumber) << LOG_KV("tx", _tx->hash());
+                                  << LOG_KV("curBlk", m_blockNumber)
+                                  << LOG_KV("tx", _tx->hash().abridged());
         return TransactionStatus::BlockLimitCheckFail;
     }
     return TransactionStatus::None;
@@ -62,12 +63,10 @@ TransactionStatus LedgerNonceChecker::checkBlockLimit(bcos::protocol::Transactio
 
 void LedgerNonceChecker::batchInsert(BlockNumber _batchId, NonceListPtr _nonceList)
 {
-    if (m_blockNumber > _batchId)
+    if (m_blockNumber < _batchId)
     {
-        return;
+        m_blockNumber.store(_batchId);
     }
-    m_blockNumber.store(_batchId);
-
     ssize_t batchToBeRemoved = (_batchId > m_blockLimit) ? (_batchId - m_blockLimit) : -1;
     // insert the latest nonces
     TxPoolNonceChecker::batchInsert(_batchId, _nonceList);

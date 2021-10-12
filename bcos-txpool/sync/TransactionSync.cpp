@@ -116,7 +116,7 @@ void TransactionSync::onRecvSyncMessage(
                     {
                         return;
                     }
-                    transactionSync->onReceiveTxsRequest(txsSyncMsg, _sendResponse);
+                    transactionSync->onReceiveTxsRequest(txsSyncMsg, _sendResponse, _nodeID);
                 }
                 catch (std::exception const& e)
                 {
@@ -156,8 +156,8 @@ void TransactionSync::onRecvSyncMessage(
     }
 }
 
-void TransactionSync::onReceiveTxsRequest(
-    TxsSyncMsgInterface::Ptr _txsRequest, SendResponseCallback _sendResponse)
+void TransactionSync::onReceiveTxsRequest(TxsSyncMsgInterface::Ptr _txsRequest,
+    SendResponseCallback _sendResponse, bcos::crypto::PublicPtr _peer)
 {
     auto const& txsHash = _txsRequest->txsHash();
     HashList missedTxs;
@@ -165,9 +165,10 @@ void TransactionSync::onReceiveTxsRequest(
     // Note: here assume that all the transaction should be hit in the txpool
     if (missedTxs.size() > 0)
     {
-        SYNC_LOG(WARNING) << LOG_DESC("onReceiveTxsRequest: transaction missing")
-                          << LOG_KV("missedTxsSize", missedTxs.size())
-                          << LOG_KV("nodeId", m_config->nodeID()->shortHex());
+        SYNC_LOG(DEBUG) << LOG_DESC("onReceiveTxsRequest: transaction missing")
+                        << LOG_KV("missedTxsSize", missedTxs.size())
+                        << LOG_KV("peer", _peer ? _peer->shortHex() : "unknown")
+                        << LOG_KV("nodeId", m_config->nodeID()->shortHex());
 #if FISCO_DEBUG
         // TODO: remove this, now just for bug tracing
         for (auto txHash : missedTxs)
@@ -190,6 +191,7 @@ void TransactionSync::onReceiveTxsRequest(
     auto packetData = txsResponse->encode();
     _sendResponse(ref(*packetData));
     SYNC_LOG(INFO) << LOG_DESC("onReceiveTxsRequest: response txs")
+                   << LOG_KV("peer", _peer ? _peer->shortHex() : "unknown")
                    << LOG_KV("txsSize", txs->size());
 }
 
@@ -327,11 +329,11 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
 {
     if (_error != nullptr)
     {
-        SYNC_LOG(WARNING) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
-                          << LOG_KV("peer", _nodeID ? _nodeID->shortHex() : "unknown")
-                          << LOG_KV("missedTxsSize", _missedTxs->size())
-                          << LOG_KV("errorCode", _error->errorCode())
-                          << LOG_KV("errorMsg", _error->errorMessage());
+        SYNC_LOG(INFO) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
+                       << LOG_KV("peer", _nodeID ? _nodeID->shortHex() : "unknown")
+                       << LOG_KV("missedTxsSize", _missedTxs->size())
+                       << LOG_KV("errorCode", _error->errorCode())
+                       << LOG_KV("errorMsg", _error->errorMessage());
         _onVerifyFinished(_error, false);
         return;
     }
@@ -353,9 +355,17 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     auto transactions = m_config->blockFactory()->createBlock(txsResponse->txsData(), true, false);
     if (_missedTxs->size() != transactions->transactionsSize())
     {
-        SYNC_LOG(WARNING) << LOG_DESC("verifyFetchedTxs failed")
-                          << LOG_KV("expectedTxs", _missedTxs->size())
-                          << LOG_KV("fetchedTxs", transactions->transactionsSize());
+        SYNC_LOG(INFO) << LOG_DESC("verifyFetchedTxs failed")
+                       << LOG_KV("expectedTxs", _missedTxs->size())
+                       << LOG_KV("fetchedTxs", transactions->transactionsSize())
+                       << LOG_KV("peer", _nodeID->shortHex())
+                       << LOG_KV("hash", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+                                             _verifiedProposal->blockHeader()->hash().abridged() :
+                                             "unknown")
+                       << LOG_KV(
+                              "consNum", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+                                             _verifiedProposal->blockHeader()->number() :
+                                             -1);
         // response the verify result
         _onVerifyFinished(
             std::make_shared<Error>(CommonError::TransactionsMissing, "TransactionsMissing"),
@@ -383,7 +393,13 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
         }
     }
     _onVerifyFinished(error, true);
-    SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs and verify success");
+    SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs and verify success")
+                    << LOG_KV("hash", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+                                          _verifiedProposal->blockHeader()->hash().abridged() :
+                                          "unknown")
+                    << LOG_KV("consNum", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
+                                             _verifiedProposal->blockHeader()->number() :
+                                             -1);
 }
 
 void TransactionSync::maintainDownloadingTransactions()
