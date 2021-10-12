@@ -98,6 +98,11 @@ public:
     virtual void stop() = 0;
     virtual void printPendingTxs() {}
 
+    virtual std::shared_ptr<bcos::crypto::HashList> batchVerifyProposal(
+        bcos::protocol::Block::Ptr _block) = 0;
+
+    virtual bool batchVerifyProposal(std::shared_ptr<bcos::crypto::HashList> _txsHashList) = 0;
+
 protected:
     bcos::CallbackCollectionHandler<> m_onReady;
     // notify the sealer the latest unsealed txs

@@ -68,7 +68,8 @@ private:
     bcos::protocol::BlockFactory::Ptr m_blockFactory;
     std::shared_ptr<bcos::ledger::LedgerInterface> m_ledger;
 
-    unsigned m_networkTimeout = 3000;
+    // set networkTimeout to 500ms
+    unsigned m_networkTimeout = 500;
 
     unsigned m_forwardPercent = 25;
 };
