@@ -400,7 +400,6 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
                     << LOG_KV("consNum", (_verifiedProposal && _verifiedProposal->blockHeader()) ?
                                              _verifiedProposal->blockHeader()->number() :
                                              -1);
-    ;
 }
 
 void TransactionSync::maintainDownloadingTransactions()
