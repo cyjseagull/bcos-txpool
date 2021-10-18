@@ -105,6 +105,12 @@ public:
         _onGetTxsSize(nullptr, pendingTxsSize);
     }
 
+    void notifyConnectedNodes(bcos::crypto::NodeIDSet const& _connectedNodes,
+        std::function<void(Error::Ptr)> _onResponse) override
+    {
+        m_transactionSync->config()->notifyConnectedNodes(_connectedNodes, _onResponse);
+    }
+
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);
     virtual void getTxsFromLocalLedger(bcos::crypto::HashListPtr _txsHash,
