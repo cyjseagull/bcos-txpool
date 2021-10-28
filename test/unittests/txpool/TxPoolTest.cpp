@@ -25,6 +25,7 @@
 #include <bcos-framework/testutils/crypto/HashImpl.h>
 #include <bcos-framework/testutils/crypto/SignatureImpl.h>
 #include <bcos-framework/testutils/protocol/FakeTransaction.h>
+#include <boost/exception/diagnostic_information.hpp>
 #include <boost/test/unit_test.hpp>
 using namespace bcos;
 using namespace bcos::txpool;
@@ -48,7 +49,12 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     for (size_t i = 0; i < 10; i++)
     {
         auto txHash = _cryptoSuite->hashImpl()->hash(std::to_string(i));
-        auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+        // auto txMetaData = transactionMetaDataFactory.createTransactionMetaData(txHash,
+        // txHash.abridged());
+        auto txMetaData = _faker->blockFactory()->createTransactionMetaData();
+        txMetaData->setHash(txHash);
+        txMetaData->setTo(txHash.abridged());
+
         txsHash->emplace_back(txHash);
         block->appendTransactionMetaData(txMetaData);
     }
@@ -88,8 +94,11 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     for (auto tx : *txs)
     {
         txsHash->emplace_back(tx->hash());
-        auto txMetaData =
-            blockFactory->createTransactionMetaData(tx->hash(), tx->hash().abridged());
+        // auto txMetaData =
+        //     blockFactory->createTransactionMetaData(tx->hash(), tx->hash().abridged());
+        auto txMetaData = _faker->blockFactory()->createTransactionMetaData();
+        txMetaData->setHash(tx->hash());
+        txMetaData->setTo(tx->hash().abridged());
         block->appendTransactionMetaData(txMetaData);
     }
     finish = false;
@@ -125,7 +134,10 @@ void testAsyncFillBlock(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     // case3: with some txs hitted
     auto txHash = _cryptoSuite->hashImpl()->hash("test");
     txsHash->emplace_back(txHash);
-    auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+    // auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+    auto txMetaData = _faker->blockFactory()->createTransactionMetaData();
+    txMetaData->setHash(txHash);
+    txMetaData->setTo(txHash.abridged());
     block->appendTransactionMetaData(txMetaData);
 
     finish = false;
@@ -226,8 +238,9 @@ void testAsyncSealTxs(TxPoolFixture::Ptr _faker, TxPoolInterface::Ptr _txpool,
     auto txsResult = std::make_shared<TransactionSubmitResults>();
     for (auto txHash : *sealedTxs)
     {
-        auto txResult =
-            std::make_shared<TransactionSubmitResultImpl>(txHash, TransactionStatus::None);
+        auto txResult = std::make_shared<TransactionSubmitResultImpl>();
+        txResult->setTxHash(txHash);
+        txResult->setStatus((uint32_t)TransactionStatus::None);
         txsResult->emplace_back(txResult);
     }
     auto missedTxs = std::make_shared<HashList>();
@@ -454,6 +467,54 @@ BOOST_AUTO_TEST_CASE(testSMTxPoolInitAndSubmitTransaction)
     auto signatureImpl = std::make_shared<SM2SignatureImpl>();
     auto cryptoSuite = std::make_shared<CryptoSuite>(hashImpl, signatureImpl, nullptr);
     txPoolInitAndSubmitTransactionTest(true, cryptoSuite);
+}
+
+BOOST_AUTO_TEST_CASE(fillWithSubmit)
+{
+    // auto hashImpl = std::make_shared<Sm3Hash>();
+    // auto signatureImpl = std::make_shared<SM2SignatureImpl>();
+    // auto cryptoSuite = std::make_shared<CryptoSuite>(hashImpl, signatureImpl, nullptr);
+
+    // auto keyPair = signatureImpl->generateKeyPair();
+    // std::string groupId = "group_test_for_txpool";
+    // std::string chainId = "chain_test_for_txpool";
+    // int64_t blockLimit = 10;
+    // auto fakeGateWay = std::make_shared<FakeGateWay>();
+    // auto faker = std::make_shared<TxPoolFixture>(
+    //     keyPair->publicKey(), cryptoSuite, groupId, chainId, blockLimit, fakeGateWay);
+    // faker->init();
+
+    // // check the txpool config
+    // auto txpoolConfig = faker->txpool()->txpoolConfig();
+    // BOOST_CHECK(txpoolConfig->txPoolNonceChecker());
+    // BOOST_CHECK(txpoolConfig->txValidator());
+    // BOOST_CHECK(txpoolConfig->blockFactory());
+    // BOOST_CHECK(txpoolConfig->txFactory());
+    // BOOST_CHECK(txpoolConfig->ledger());
+
+    // auto txpool = faker->txpool();
+    // auto txpoolStorage = txpool->txpoolStorage();
+
+    // // case7: submit success
+    // auto tx =
+    //     fakeTransaction(cryptoSuite, utcTime() + 2000000, 100, chainId, groupId);
+
+    // tx->encode();
+    // auto encodedPtr = std::make_shared<bytes>(tx->takeEncoded());
+
+    // auto hashList = std::make_shared<bcos::crypto::HashList>();
+    // hashList->push_back(tx->hash());
+
+    // std::promise<void> fillPromise;
+    // txpool->asyncFillBlock(hashList,
+    //     [originTx = tx, &fillPromise](Error::Ptr error, bcos::protocol::TransactionsPtr tx) {
+    //         BOOST_CHECK(!error);
+    //         BOOST_CHECK(tx);
+    //         BOOST_CHECK_EQUAL(tx->size(), 1);
+    //         BOOST_CHECK_EQUAL((*tx)[0].get(), originTx.get());
+    //         fillPromise.set_value();
+    //     });
+    // fillPromise.get_future().get();
 }
 BOOST_AUTO_TEST_SUITE_END()
 }  // namespace test

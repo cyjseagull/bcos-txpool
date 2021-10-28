@@ -193,7 +193,11 @@ void testTransactionSync(bool _onlyTxsStatus = false)
     auto block = blockFactory->createBlock();
     for (auto const& txHash : *txsHash)
     {
-        auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+        // auto txMetaData = blockFactory->createTransactionMetaData(txHash, txHash.abridged());
+        auto txMetaData = blockFactory->createTransactionMetaData();
+        txMetaData->setHash(txHash);
+        txMetaData->setTo(txHash.abridged());
+
         block->appendTransactionMetaData(txMetaData);
     }
     auto encodedData = std::make_shared<bytes>();

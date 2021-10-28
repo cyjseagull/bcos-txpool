@@ -145,7 +145,7 @@ protected:
             }
             catch (std::exception const& e)
             {
-                TXPOOL_LOG(WARNING) << LOG_DESC("asyncSubmit excepiton")
+                TXPOOL_LOG(WARNING) << LOG_DESC("asyncSubmit exception")
                                     << LOG_KV("errorInfo", boost::diagnostic_information(e));
             }
         });

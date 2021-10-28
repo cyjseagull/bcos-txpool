@@ -23,6 +23,7 @@
 #include "bcos-txpool/TxPoolFactory.h"
 #include "bcos-txpool/sync/TransactionSync.h"
 #include "bcos-txpool/txpool/validator/TxValidator.h"
+#include "libprotocol/protobuf/PBTransactionMetaData.h"
 #include <bcos-framework/interfaces/consensus/ConsensusNode.h>
 #include <bcos-framework/libprotocol/TransactionSubmitResultFactoryImpl.h>
 #include <bcos-framework/libprotocol/protobuf/PBBlockFactory.h>
@@ -111,6 +112,7 @@ public:
     }
     virtual ~TxPoolFixture() {}
 
+    BlockFactory::Ptr blockFactory() { return m_blockFactory; }
     TxPool::Ptr txpool() { return m_txpool; }
     FakeLedger::Ptr ledger() { return m_ledger; }
     NodeIDPtr nodeID() { return m_nodeId; }

@@ -20,6 +20,8 @@
  */
 #include "bcos-txpool/txpool/storage/MemoryStorage.h"
 #include <tbb/parallel_invoke.h>
+#include <memory>
+#include <tuple>
 
 using namespace bcos;
 using namespace bcos::txpool;
@@ -185,7 +187,9 @@ void MemoryStorage::notifyInvalidReceipt(
         return;
     }
     // notify txResult
-    auto txResult = m_config->txResultFactory()->createTxSubmitResult(_txHash, (int32_t)_status);
+    auto txResult = m_config->txResultFactory()->createTxSubmitResult();
+    txResult->setTxHash(_txHash);
+    txResult->setStatus((uint32_t)_status);
     std::stringstream errorMsg;
     errorMsg << _status;
     _txSubmitCallback(std::make_shared<Error>((int32_t)_status, errorMsg.str()), txResult);
@@ -326,6 +330,7 @@ void MemoryStorage::notifyTxResult(
     }
     // notify the transaction result to RPC
     auto self = std::weak_ptr<MemoryStorage>(shared_from_this());
+
     m_notifier->enqueue([self, _tx, _txSubmitResult, txSubmitCallback]() {
         try
         {
@@ -393,6 +398,7 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
         for (auto txResult : _txsResult)
         {
             auto tx = removeSubmittedTxWithoutLock(txResult);
+
             if (!tx && txResult->nonce() != NonceType(-1))
             {
                 nonceList->emplace_back(txResult->nonce());
@@ -503,8 +509,16 @@ void MemoryStorage::batchFetchTxs(Block::Ptr _txsList, Block::Ptr _sysTxsList, s
         {
             continue;
         }
-        auto txMetaData =
-            blockFactory->createTransactionMetaData(tx->hash(), std::string(tx->to()));
+        auto txMetaData = m_config->blockFactory()->createTransactionMetaData();
+
+        txMetaData->setHash(tx->hash());
+        txMetaData->setTo(std::string(tx->to()));
+        txMetaData->setSource("From rpc");
+
+        // take the submit callback because of success execute
+        std::ignore =
+            std::const_pointer_cast<bcos::protocol::Transaction>(tx)->takeSubmitCallback();
+
         if (tx->systemTx())
         {
             _sysTxsList->appendTransactionMetaData(txMetaData);
@@ -556,8 +570,10 @@ void MemoryStorage::removeInvalidTxs()
                     for (auto const& txHash : memoryStorage->m_invalidTxs)
                     {
                         auto txResult =
-                            memoryStorage->m_config->txResultFactory()->createTxSubmitResult(
-                                txHash, (int32_t)TransactionStatus::BlockLimitCheckFail);
+                            memoryStorage->m_config->txResultFactory()->createTxSubmitResult();
+                        txResult->setTxHash(txHash);
+                        txResult->setStatus((uint32_t)TransactionStatus::BlockLimitCheckFail);
+
                         memoryStorage->removeSubmittedTxWithoutLock(txResult);
                     }
                 },
