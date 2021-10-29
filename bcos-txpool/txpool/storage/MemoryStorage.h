@@ -99,6 +99,25 @@ public:
     bool batchVerifyProposal(std::shared_ptr<bcos::crypto::HashList> _txsHashList) override;
 
 protected:
+    virtual bool shouldNotifyTx(bcos::protocol::Transaction::ConstPtr _tx,
+        bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult)
+    {
+        if (!_txSubmitResult)
+        {
+            return false;
+        }
+        if (!_tx->submitCallback())
+        {
+            return false;
+        }
+        // Note: the normal transaction result should be notified by the scheduler module for perf
+        // consideration
+        if (_txSubmitResult->status() == (int32_t)bcos::protocol::TransactionStatus::None)
+        {
+            return false;
+        }
+        return true;
+    }
     bcos::protocol::TransactionStatus enforceSubmitTransaction(
         bcos::protocol::Transaction::Ptr _tx);
     bcos::protocol::TransactionStatus verifyAndSubmitTransaction(

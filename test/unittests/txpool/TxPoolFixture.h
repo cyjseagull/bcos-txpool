@@ -22,6 +22,7 @@
 #include "bcos-txpool/TxPoolConfig.h"
 #include "bcos-txpool/TxPoolFactory.h"
 #include "bcos-txpool/sync/TransactionSync.h"
+#include "bcos-txpool/txpool/storage/MemoryStorage.h"
 #include "bcos-txpool/txpool/validator/TxValidator.h"
 #include "libprotocol/protobuf/PBTransactionMetaData.h"
 #include <bcos-framework/interfaces/consensus/ConsensusNode.h>
@@ -75,6 +76,27 @@ public:
         forwardTxsFromP2P(txs);
     }
 };
+
+class FakeMemoryStorage : public MemoryStorage
+{
+public:
+    FakeMemoryStorage(TxPoolConfig::Ptr _config) : MemoryStorage(_config) {}
+
+    bool shouldNotifyTx(bcos::protocol::Transaction::ConstPtr _tx,
+        bcos::protocol::TransactionSubmitResult::Ptr _txSubmitResult) override
+    {
+        if (!_txSubmitResult)
+        {
+            return false;
+        }
+        if (!_tx->submitCallback())
+        {
+            return false;
+        }
+        return true;
+    }
+};
+
 class TxPoolFixture
 {
 public:
@@ -101,6 +123,9 @@ public:
             std::make_shared<TxPoolFactory>(_nodeId, _cryptoSuite, m_txResultFactory,
                 m_blockFactory, m_frontService, m_ledger, m_groupId, m_chainId, m_blockLimit);
         m_txpool = txPoolFactory->createTxPool();
+        auto fakeMemoryStorage = std::make_shared<FakeMemoryStorage>(m_txpool->txpoolConfig());
+        m_txpool->setTxPoolStorage(fakeMemoryStorage);
+
         m_sync = std::dynamic_pointer_cast<TransactionSync>(m_txpool->transactionSync());
         auto syncConfig = m_sync->config();
         m_sync = std::make_shared<FakeTransactionSync1>(syncConfig);

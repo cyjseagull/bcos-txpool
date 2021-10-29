@@ -61,6 +61,12 @@ public:
     void setForwardPercent(unsigned _forwardPercent) { m_forwardPercent = _forwardPercent; }
     std::shared_ptr<bcos::ledger::LedgerInterface> ledger() { return m_ledger; }
 
+    // for ut
+    void setTxPoolStorage(bcos::txpool::TxPoolStorageInterface::Ptr _txpoolStorage)
+    {
+        m_txpoolStorage = _txpoolStorage;
+    }
+
 private:
     bcos::front::FrontServiceInterface::Ptr m_frontService;
     bcos::txpool::TxPoolStorageInterface::Ptr m_txpoolStorage;
