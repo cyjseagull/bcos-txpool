@@ -111,6 +111,13 @@ public:
         m_transactionSync->config()->notifyConnectedNodes(_connectedNodes, _onResponse);
     }
 
+    // for UT
+    void setTxPoolStorage(TxPoolStorageInterface::Ptr _txpoolStorage)
+    {
+        m_txpoolStorage = _txpoolStorage;
+        m_transactionSync->config()->setTxPoolStorage(_txpoolStorage);
+    }
+
 protected:
     virtual bool checkExistsInGroup(bcos::protocol::TxSubmitCallback _txSubmitCallback);
     virtual void getTxsFromLocalLedger(bcos::crypto::HashListPtr _txsHash,

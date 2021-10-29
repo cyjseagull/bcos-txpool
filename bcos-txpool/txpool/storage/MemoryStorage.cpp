@@ -323,11 +323,12 @@ Transaction::ConstPtr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::
 void MemoryStorage::notifyTxResult(
     Transaction::ConstPtr _tx, TransactionSubmitResult::Ptr _txSubmitResult)
 {
-    auto txSubmitCallback = _tx->submitCallback();
-    if (!txSubmitCallback)
+    auto ret = shouldNotifyTx(_tx, _txSubmitResult);
+    if (!ret)
     {
         return;
     }
+    auto txSubmitCallback = _tx->submitCallback();
     // notify the transaction result to RPC
     auto self = std::weak_ptr<MemoryStorage>(shared_from_this());
 
