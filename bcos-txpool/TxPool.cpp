@@ -113,13 +113,13 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
     auto block = m_config->blockFactory()->createBlock(_block);
+    auto blockHeader = block->blockHeader();
     TXPOOL_LOG(INFO) << LOG_DESC("begin asyncVerifyBlock")
-                     << LOG_KV(
-                            "consNum", block->blockHeader() ? block->blockHeader()->number() : -1);
+                     << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1);
     // Note: here must has thread pool for lock in the callback
     // use single thread here to decrease thread competition
     auto self = std::weak_ptr<TxPool>(shared_from_this());
-    m_verifier->enqueue([self, _generatedNodeID, block, _onVerifyFinished]() {
+    m_verifier->enqueue([self, _generatedNodeID, blockHeader, block, _onVerifyFinished]() {
         try
         {
             auto startT = utcTime();
@@ -136,53 +136,48 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
             }
             auto txpoolStorage = txpool->m_txpoolStorage;
             auto missedTxs = txpoolStorage->batchVerifyProposal(block);
-            auto onVerifyFinishedWrapper = [txpoolStorage, _onVerifyFinished, block, missedTxs,
-                                               startT](Error::Ptr _error, bool _ret) {
-                auto verifyRet = _ret;
-                auto verifyError = _error;
-                if (missedTxs->size() > 0)
-                {
-                    // try to fetch the missed txs from the local  txpool again
-                    if (_error && _error->errorCode() == CommonError::TransactionsMissing)
+            auto onVerifyFinishedWrapper =
+                [txpoolStorage, _onVerifyFinished, block, blockHeader, missedTxs, startT](
+                    Error::Ptr _error, bool _ret) {
+                    auto verifyRet = _ret;
+                    auto verifyError = _error;
+                    if (missedTxs->size() > 0)
                     {
-                        verifyRet = txpoolStorage->batchVerifyProposal(missedTxs);
+                        // try to fetch the missed txs from the local  txpool again
+                        if (_error && _error->errorCode() == CommonError::TransactionsMissing)
+                        {
+                            verifyRet = txpoolStorage->batchVerifyProposal(missedTxs);
+                        }
+                        if (verifyRet)
+                        {
+                            verifyError = nullptr;
+                        }
                     }
-                    if (verifyRet)
+                    TXPOOL_LOG(INFO)
+                        << LOG_DESC("asyncVerifyBlock finished")
+                        << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1)
+                        << LOG_KV("hash", blockHeader ? blockHeader->hash().abridged() : "unknown")
+                        << LOG_KV("code", verifyError ? verifyError->errorCode() : 0)
+                        << LOG_KV("msg", verifyError ? verifyError->errorMessage() : "success")
+                        << LOG_KV("result", verifyRet) << LOG_KV("timecost", (utcTime() - startT));
+                    if (!_onVerifyFinished)
                     {
-                        verifyError = nullptr;
+                        return;
                     }
-                }
-                TXPOOL_LOG(INFO) << LOG_DESC("asyncVerifyBlock finished")
-                                 << LOG_KV("consNum",
-                                        block->blockHeader() ? block->blockHeader()->number() : -1)
-                                 << LOG_KV("hash", block->blockHeader() ?
-                                                       block->blockHeader()->hash().abridged() :
-                                                       "unknown")
-                                 << LOG_KV("code", verifyError ? verifyError->errorCode() : 0)
-                                 << LOG_KV("msg",
-                                        verifyError ? verifyError->errorMessage() : "success")
-                                 << LOG_KV("result", verifyRet)
-                                 << LOG_KV("timecost", (utcTime() - startT));
-                if (!_onVerifyFinished)
-                {
-                    return;
-                }
-                _onVerifyFinished(verifyError, verifyRet);
-            };
+                    _onVerifyFinished(verifyError, verifyRet);
+                };
 
             if (missedTxs->size() == 0)
             {
                 TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock: hit all transactions in txpool")
-                                  << LOG_KV("consNum",
-                                         block->blockHeader() ? block->blockHeader()->number() : -1)
+                                  << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1)
                                   << LOG_KV("nodeId",
                                          txpool->m_transactionSync->config()->nodeID()->shortHex());
                 onVerifyFinishedWrapper(nullptr, true);
                 return;
             }
             TXPOOL_LOG(DEBUG) << LOG_DESC("asyncVerifyBlock")
-                              << LOG_KV("consNum",
-                                     block->blockHeader() ? block->blockHeader()->number() : -1)
+                              << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1)
                               << LOG_KV("totalTxs", block->transactionsHashSize())
                               << LOG_KV("missedTxs", missedTxs->size());
             txpool->m_transactionSync->requestMissedTxs(
