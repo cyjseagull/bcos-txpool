@@ -75,10 +75,6 @@ bool TxPool::checkExistsInGroup(TxSubmitCallback _txSubmitCallback)
     {
         return true;
     }
-    // notify txResult
-    // auto txResult = m_config->txResultFactory()->createTxSubmitResult(
-    //     HashType(), (int32_t)TransactionStatus::RequestNotBelongToTheGroup);
-
     auto txResult = m_config->txResultFactory()->createTxSubmitResult();
     txResult->setTxHash(HashType());
     txResult->setStatus((uint32_t)TransactionStatus::RequestNotBelongToTheGroup);

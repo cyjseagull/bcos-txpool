@@ -323,8 +323,11 @@ Transaction::ConstPtr MemoryStorage::removeSubmittedTx(TransactionSubmitResult::
 void MemoryStorage::notifyTxResult(
     Transaction::ConstPtr _tx, TransactionSubmitResult::Ptr _txSubmitResult)
 {
-    auto ret = shouldNotifyTx(_tx, _txSubmitResult);
-    if (!ret)
+    if (!_txSubmitResult)
+    {
+        return;
+    }
+    if (!_tx->submitCallback())
     {
         return;
     }
@@ -514,12 +517,6 @@ void MemoryStorage::batchFetchTxs(Block::Ptr _txsList, Block::Ptr _sysTxsList, s
 
         txMetaData->setHash(tx->hash());
         txMetaData->setTo(std::string(tx->to()));
-        txMetaData->setSource("From rpc");
-
-        // take the submit callback because of success execute
-        std::ignore =
-            std::const_pointer_cast<bcos::protocol::Transaction>(tx)->takeSubmitCallback();
-
         if (tx->systemTx())
         {
             _sysTxsList->appendTransactionMetaData(txMetaData);

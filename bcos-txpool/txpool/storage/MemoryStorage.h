@@ -110,12 +110,6 @@ protected:
         {
             return false;
         }
-        // Note: the normal transaction result should be notified by the scheduler module for perf
-        // consideration
-        if (_txSubmitResult->status() == (int32_t)bcos::protocol::TransactionStatus::None)
-        {
-            return false;
-        }
         return true;
     }
     bcos::protocol::TransactionStatus enforceSubmitTransaction(
