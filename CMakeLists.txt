@@ -39,8 +39,8 @@ list(APPEND CMAKE_MODULE_PATH ${BCOS_TXPOOL_CMAKE_DIR})
 #init hunter
 include(HunterGate)
 HunterGate(
-    URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/60389000be6e74983b8790e695ba1bd10e88fab7.tar.gz"
-    SHA1 "8477caf1a595856cdc2c3b09568bbf9bf15f1f35"
+    URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/b55a347258b0fc3eda47f4ccd3e2c0db595b4957.tar.gz"
+    SHA1 "9331d1e70cee5498bd59ada13aa68278cbb9a2d6"
     FILEPATH "${BCOS_TXPOOL_CMAKE_DIR}/config.cmake"
 )
 project(bcos-txpool VERSION "3.0.0")

@@ -306,8 +306,6 @@ void TxPool::fillBlock(HashListPtr _txsHash,
         }
         return;
     }
-    TXPOOL_LOG(DEBUG) << LOG_DESC("asyncFillBlock: hit all transactions")
-                      << LOG_KV("size", txs->size());
     _onBlockFilled(nullptr, txs);
 }
 

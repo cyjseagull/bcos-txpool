@@ -200,13 +200,19 @@ void MemoryStorage::notifyInvalidReceipt(
 TransactionStatus MemoryStorage::insert(Transaction::ConstPtr _tx)
 {
     ReadGuard l(x_txpoolMutex);
+    // check again to ensure the same transaction not be imported many times
+    if (m_txsTable.count(_tx->hash()))
+    {
+        return TransactionStatus::AlreadyInTxPool;
+    }
     m_txsTable[_tx->hash()] = _tx;
     m_onReady();
     preCommitTransaction(_tx);
     notifyUnsealedTxsSize();
 #if FISCO_DEBUG
     // TODO: remove this, now just for bug tracing
-    TXPOOL_LOG(DEBUG) << LOG_DESC("submit tx:") << _tx->hash().abridged();
+    TXPOOL_LOG(DEBUG) << LOG_DESC("submit tx:") << _tx->hash().abridged()
+                      << LOG_KV("txPointer", _tx);
 #endif
     return TransactionStatus::None;
 }
@@ -284,7 +290,7 @@ Transaction::ConstPtr MemoryStorage::removeWithoutLock(HashType const& _txHash)
     // TODO: remove this, now just for bug tracing
     TXPOOL_LOG(DEBUG) << LOG_DESC("remove tx: ") << tx->hash().abridged()
                       << LOG_KV("index", tx->batchId())
-                      << LOG_KV("hash", tx->batchHash().abridged());
+                      << LOG_KV("hash", tx->batchHash().abridged()) << LOG_KV("txPointer", tx);
 #endif
     return tx;
 }
@@ -344,9 +350,6 @@ void MemoryStorage::notifyTxResult(
                 return;
             }
             txSubmitCallback(nullptr, _txSubmitResult);
-            // TODO: remove this log
-            TXPOOL_LOG(TRACE) << LOG_DESC("notify submit result")
-                              << LOG_KV("tx", _tx->hash().abridged());
         }
         catch (std::exception const& e)
         {
@@ -522,13 +525,16 @@ void MemoryStorage::batchFetchTxs(Block::Ptr _txsList, Block::Ptr _sysTxsList, s
         {
             m_sealedTxsSize++;
         }
+#if FISCO_DEBUG
+        // TODO: remove this, now just for bug tracing
+        TXPOOL_LOG(INFO) << LOG_DESC("fetch ") << tx->hash().abridged()
+                         << LOG_KV("sealed", tx->sealed()) << LOG_KV("batchId", tx->batchId())
+                         << LOG_KV("batchHash", tx->batchHash().abridged())
+                         << LOG_KV("txPointer", tx);
+#endif
         tx->setSealed(true);
         tx->setBatchId(-1);
         tx->setBatchHash(HashType());
-#if FISCO_DEBUG
-        // TODO: remove this, now just for bug tracing
-        TXPOOL_LOG(INFO) << LOG_DESC("fetch ") << tx->hash().abridged();
-#endif
         if ((_txsList->transactionsMetaDataSize() + _sysTxsList->transactionsMetaDataSize()) >=
             _txsLimit)
         {
@@ -674,7 +680,7 @@ void MemoryStorage::batchMarkTxs(
         // TODO: remove this, now just for bug tracing
         TXPOOL_LOG(DEBUG) << LOG_DESC("mark ") << tx->hash().abridged() << ":" << _sealFlag
                           << LOG_KV("index", tx->batchId())
-                          << LOG_KV("hash", tx->batchHash().abridged());
+                          << LOG_KV("hash", tx->batchHash().abridged()) << LOG_KV("txPointer", tx);
 #endif
     }
     TXPOOL_LOG(DEBUG) << LOG_DESC("batchMarkTxs ") << LOG_KV("txsSize", _txsHashList.size())
