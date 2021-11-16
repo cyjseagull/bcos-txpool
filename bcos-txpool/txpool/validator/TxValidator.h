@@ -59,7 +59,8 @@ private:
     std::string m_chainId;
 
     const std::set<std::string> m_systemTxsAddress = {bcos::precompiled::SYS_CONFIG_ADDRESS,
-        bcos::precompiled::CONSENSUS_ADDRESS, bcos::precompiled::WORKING_SEALER_MGR_ADDRESS};
+        bcos::precompiled::CONSENSUS_ADDRESS, bcos::precompiled::WORKING_SEALER_MGR_ADDRESS,
+        bcos::precompiled::SYS_CONFIG_NAME, bcos::precompiled::CONSENSUS_NAME};
 };
 }  // namespace txpool
 }  // namespace bcos
