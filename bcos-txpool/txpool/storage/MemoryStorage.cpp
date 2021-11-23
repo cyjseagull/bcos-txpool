@@ -97,10 +97,13 @@ TransactionStatus MemoryStorage::enforceSubmitTransaction(Transaction::Ptr _tx)
         if (m_txsTable.count(txHash))
         {
             auto tx = m_txsTable[txHash];
-            if (!tx->sealed())
+            if (!tx->sealed() || tx->batchHash() == HashType())
             {
-                m_sealedTxsSize++;
-                tx->setSealed(true);
+                if (!tx->sealed())
+                {
+                    m_sealedTxsSize++;
+                    tx->setSealed(true);
+                }
                 tx->setBatchId(_tx->batchId());
                 tx->setBatchHash(_tx->batchHash());
                 TXPOOL_LOG(TRACE) << LOG_DESC("enforce to seal:") << tx->hash().abridged()
