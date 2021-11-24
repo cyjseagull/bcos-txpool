@@ -174,11 +174,6 @@ TransactionStatus MemoryStorage::verifyAndSubmitTransaction(
             m_missedTxs.unsafe_erase(_tx->hash());
         }
     }
-    auto txSubmitCallback = _tx->submitCallback();
-    if (result != TransactionStatus::None && txSubmitCallback)
-    {
-        notifyInvalidReceipt(_tx->hash(), result, txSubmitCallback);
-    }
     return result;
 }
 
