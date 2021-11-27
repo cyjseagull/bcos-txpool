@@ -111,7 +111,8 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
     auto block = m_config->blockFactory()->createBlock(_block);
     auto blockHeader = block->blockHeader();
     TXPOOL_LOG(INFO) << LOG_DESC("begin asyncVerifyBlock")
-                     << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1);
+                     << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1)
+                     << LOG_KV("hash", blockHeader ? blockHeader->hash().abridged() : "null");
     // Note: here must has thread pool for lock in the callback
     // use single thread here to decrease thread competition
     auto self = std::weak_ptr<TxPool>(shared_from_this());
@@ -152,7 +153,7 @@ void TxPool::asyncVerifyBlock(PublicPtr _generatedNodeID, bytesConstRef const& _
                     TXPOOL_LOG(INFO)
                         << LOG_DESC("asyncVerifyBlock finished")
                         << LOG_KV("consNum", blockHeader ? blockHeader->number() : -1)
-                        << LOG_KV("hash", blockHeader ? blockHeader->hash().abridged() : "unknown")
+                        << LOG_KV("hash", blockHeader ? blockHeader->hash().abridged() : "null")
                         << LOG_KV("code", verifyError ? verifyError->errorCode() : 0)
                         << LOG_KV("msg", verifyError ? verifyError->errorMessage() : "success")
                         << LOG_KV("result", verifyRet) << LOG_KV("timecost", (utcTime() - startT));

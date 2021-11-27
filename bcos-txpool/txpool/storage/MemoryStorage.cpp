@@ -93,12 +93,13 @@ TransactionStatus MemoryStorage::enforceSubmitTransaction(Transaction::Ptr _tx)
         auto txHash = _tx->hash();
         // use writeGuard here in case of the transaction status will be modified by other
         // interfaces
-        WriteGuard l(x_txpoolMutex);
+        UpgradableGuard l(x_txpoolMutex);
         if (m_txsTable.count(txHash))
         {
             auto tx = m_txsTable[txHash];
             if (!tx->sealed() || tx->batchHash() == HashType())
             {
+                UpgradeGuard ul(l);
                 if (!tx->sealed())
                 {
                     m_sealedTxsSize++;
@@ -309,7 +310,6 @@ Transaction::ConstPtr MemoryStorage::removeSubmittedTxWithoutLock(
     {
         return nullptr;
     }
-    notifyUnsealedTxsSize();
     notifyTxResult(tx, _txSubmitResult);
     return tx;
 }
@@ -413,6 +413,7 @@ void MemoryStorage::batchRemove(BlockNumber _batchId, TransactionSubmitResults c
             m_blockNumber = _batchId;
         }
     }
+    notifyUnsealedTxsSize();
     TXPOOL_LOG(INFO) << LOG_DESC("batchRemove txs success")
                      << LOG_KV("expectedSize", _txsResult.size()) << LOG_KV("succCount", succCount)
                      << LOG_KV("batchId", _batchId);
@@ -486,9 +487,19 @@ void MemoryStorage::batchFetchTxs(Block::Ptr _txsList, Block::Ptr _sysTxsList, s
         {
             continue;
         }
+        /// check nonce again when obtain transactions
+        // since the invalid nonce has already been checked before the txs import into the
+        // txPool the txs with duplicated nonce here are already-committed, but have not been
+        // dropped
         auto result = m_config->txValidator()->submittedToChain(tx);
         if (result == TransactionStatus::NonceCheckFail)
         {
+            // in case of the same tx notified more than once
+            auto transaction = std::const_pointer_cast<Transaction>(tx);
+            transaction->takeSubmitCallback();
+            // add to m_invalidTxs to be deleted
+            m_invalidTxs.insert(txHash);
+            m_invalidTxs.insert(tx->nonce());
             continue;
         }
         // blockLimit expired
@@ -571,6 +582,7 @@ void MemoryStorage::removeInvalidTxs()
 
                         memoryStorage->removeSubmittedTxWithoutLock(txResult);
                     }
+                    memoryStorage->notifyUnsealedTxsSize();
                 },
                 [memoryStorage]() {
                     // remove invalid nonce

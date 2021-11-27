@@ -41,7 +41,8 @@ public:
         Worker("sync", 0),
         m_downloadTxsBuffer(std::make_shared<TxsSyncMsgList>()),
         m_worker(std::make_shared<ThreadPool>("sync", 1)),
-        m_txsRequester(std::make_shared<ThreadPool>("txsRequester", 1))
+        m_txsRequester(std::make_shared<ThreadPool>("txsRequester", 1)),
+        m_forwardWorker(std::make_shared<ThreadPool>("txsForward", 1))
     {
         m_txsSubmitted = m_config->txpoolStorage()->onReady([&]() { this->noteNewTransactions(); });
     }
@@ -129,6 +130,7 @@ private:
     SharedMutex x_downloadTxsBuffer;
     ThreadPool::Ptr m_worker;
     ThreadPool::Ptr m_txsRequester;
+    ThreadPool::Ptr m_forwardWorker;
 
     bcos::Handler<> m_txsSubmitted;
 

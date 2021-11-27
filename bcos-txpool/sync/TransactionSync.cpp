@@ -200,9 +200,9 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
 {
     auto missedTxsSet =
         std::make_shared<std::set<HashType>>(_missedTxs->begin(), _missedTxs->end());
-
+    auto startT = utcTime();
     m_config->ledger()->asyncGetBatchTxsByHashList(_missedTxs, false,
-        [this, _verifiedProposal, missedTxsSet, _generatedNodeID, _onVerifyFinished](
+        [this, startT, _verifiedProposal, missedTxsSet, _generatedNodeID, _onVerifyFinished](
             Error::Ptr _error, TransactionsPtr _fetchedTxs,
             std::shared_ptr<std::map<std::string, MerkleProofPtr>>) {
             // hit all the txs
@@ -222,11 +222,19 @@ void TransactionSync::requestMissedTxs(PublicPtr _generatedNodeID, HashListPtr _
             // fetch missed txs from the given peer
             auto ledgerMissedTxs =
                 std::make_shared<HashList>(missedTxsSet->begin(), missedTxsSet->end());
+            SYNC_LOG(DEBUG)
+                << LOG_DESC("requestMissedTxs: missing txs from ledger and fetch from the peer")
+                << LOG_KV("txsSize", ledgerMissedTxs->size())
+                << LOG_KV("peer", _generatedNodeID->shortHex())
+                << LOG_KV("readDBTime", utcTime() - startT)
+                << LOG_KV("consNum", _verifiedProposal && _verifiedProposal->blockHeader() ?
+                                         _verifiedProposal->blockHeader()->number() :
+                                         -1)
+                << LOG_KV("hash", _verifiedProposal && _verifiedProposal->blockHeader() ?
+                                      _verifiedProposal->blockHeader()->hash().abridged() :
+                                      "null");
             this->requestMissedTxsFromPeer(
                 _generatedNodeID, ledgerMissedTxs, _verifiedProposal, _onVerifyFinished);
-            SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: missing txs and fetch from the peer")
-                            << LOG_KV("txsSize", ledgerMissedTxs->size())
-                            << LOG_KV("peer", _generatedNodeID->shortHex());
         });
 }
 
@@ -273,6 +281,7 @@ size_t TransactionSync::onGetMissedTxsFromLedger(std::set<HashType>& _missedTxs,
 void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashListPtr _missedTxs,
     Block::Ptr _verifiedProposal, std::function<void(Error::Ptr, bool)> _onVerifyFinished)
 {
+    auto startT = utcTime();
     BlockHeader::Ptr proposalHeader = nullptr;
     if (_verifiedProposal)
     {
@@ -286,11 +295,14 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
     auto txsRequest =
         m_config->msgFactory()->createTxsSyncMsg(TxsSyncPacketType::TxsRequestPacket, *_missedTxs);
     auto encodedData = txsRequest->encode();
+    auto encodeT = utcTime() - startT;
+    startT = utcTime();
     auto self = std::weak_ptr<TransactionSync>(shared_from_this());
     m_config->frontService()->asyncSendMessageByNodeID(ModuleID::TxsSync, _generatedNodeID,
         ref(*encodedData), m_config->networkTimeout(),
-        [self, _missedTxs, _verifiedProposal, proposalHeader, _onVerifyFinished](Error::Ptr _error,
-            NodeIDPtr _nodeID, bytesConstRef _data, const std::string&, SendResponseCallback) {
+        [self, startT, _missedTxs, _verifiedProposal, proposalHeader, _onVerifyFinished](
+            Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data, const std::string&,
+            SendResponseCallback) {
             try
             {
                 auto transactionSync = self.lock();
@@ -298,9 +310,12 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
                 {
                     return;
                 }
+                auto networkT = utcTime() - startT;
+                auto recordT = utcTime();
                 transactionSync->verifyFetchedTxs(_error, _nodeID, _data, _missedTxs,
                     _verifiedProposal,
-                    [proposalHeader, _onVerifyFinished](Error::Ptr _error, bool _result) {
+                    [networkT, recordT, proposalHeader, _onVerifyFinished](
+                        Error::Ptr _error, bool _result) {
                         if (!_onVerifyFinished)
                         {
                             return;
@@ -310,10 +325,12 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
                         {
                             return;
                         }
-                        SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs: response verify result")
-                                        << LOG_KV("propIndex", proposalHeader->number())
-                                        << LOG_KV("propHash", proposalHeader->hash().abridged())
-                                        << LOG_KV("_result", _result);
+                        SYNC_LOG(DEBUG)
+                            << LOG_DESC("requestMissedTxs: response verify result")
+                            << LOG_KV("propIndex", proposalHeader->number())
+                            << LOG_KV("propHash", proposalHeader->hash().abridged())
+                            << LOG_KV("_result", _result) << LOG_KV("networkT", networkT)
+                            << LOG_KV("verifyAndSubmitT", (utcTime() - recordT));
                     });
             }
             catch (std::exception const& e)
@@ -330,6 +347,8 @@ void TransactionSync::requestMissedTxsFromPeer(PublicPtr _generatedNodeID, HashL
 void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, bytesConstRef _data,
     HashListPtr _missedTxs, Block::Ptr _verifiedProposal, VerifyResponseCallback _onVerifyFinished)
 {
+    auto startT = utcTime();
+    auto recordT = utcTime();
     if (_error != nullptr)
     {
         SYNC_LOG(INFO) << LOG_DESC("asyncVerifyBlock: fetch missed txs failed")
@@ -356,7 +375,8 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     // verify missedTxs
     bool verifyResponsed = false;
     auto transactions = m_config->blockFactory()->createBlock(txsResponse->txsData(), true, false);
-
+    auto decodeT = utcTime() - startT;
+    startT = utcTime();
     BlockHeader::Ptr proposalHeader = nullptr;
     if (_verifiedProposal)
     {
@@ -401,7 +421,9 @@ void TransactionSync::verifyFetchedTxs(Error::Ptr _error, NodeIDPtr _nodeID, byt
     SYNC_LOG(DEBUG) << LOG_DESC("requestMissedTxs and verify success")
                     << LOG_KV(
                            "hash", (proposalHeader) ? proposalHeader->hash().abridged() : "unknown")
-                    << LOG_KV("consNum", (proposalHeader) ? proposalHeader->number() : -1);
+                    << LOG_KV("consNum", (proposalHeader) ? proposalHeader->number() : -1)
+                    << LOG_KV("decodeT", decodeT) << LOG_KV("importT", (utcTime() - startT))
+                    << LOG_KV("timecost", (utcTime() - recordT));
 }
 
 void TransactionSync::maintainDownloadingTransactions()
@@ -456,6 +478,8 @@ bool TransactionSync::importDownloadedTxs(
         proposalHeader = _verifiedProposal->blockHeader();
         enforceImport = true;
     }
+    auto recordT = utcTime();
+    auto startT = utcTime();
     // verify the transactions
     std::atomic_bool verifySuccess = {true};
     tbb::parallel_for(
@@ -495,6 +519,8 @@ bool TransactionSync::importDownloadedTxs(
     {
         return false;
     }
+    auto verifyT = utcTime() - startT;
+    startT = utcTime();
     // import the transactions into txpool
     auto txpool = m_config->txpoolStorage();
     size_t successImportTxs = 0;
@@ -528,7 +554,9 @@ bool TransactionSync::importDownloadedTxs(
     }
     SYNC_LOG(DEBUG) << LOG_DESC("importDownloadedTxs success")
                     << LOG_KV("nodeId", m_config->nodeID()->shortHex())
-                    << LOG_KV("successImportTxs", successImportTxs) << LOG_KV("totalTxs", txsSize);
+                    << LOG_KV("successImportTxs", successImportTxs) << LOG_KV("totalTxs", txsSize)
+                    << LOG_KV("verifyT", verifyT) << LOG_KV("submitT", (utcTime() - startT))
+                    << LOG_KV("timecost", (utcTime() - recordT));
     return true;
 }
 
@@ -541,10 +569,12 @@ void TransactionSync::maintainTransactions()
         return;
     }
     broadcastTxsFromRpc(txs);
-    // Added sleep to prevent excessive redundant transaction message packets caused by
-    // transaction status spreading too fast
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    forwardTxsFromP2P(txs);
+    m_forwardWorker->enqueue([this, txs]() {
+        // Added sleep to prevent excessive redundant transaction message packets caused by
+        // transaction status spreading too fast
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        forwardTxsFromP2P(txs);
+    });
 }
 
 // Randomly select a number of nodes to forward the transaction status
