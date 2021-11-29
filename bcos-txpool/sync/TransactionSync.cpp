@@ -607,7 +607,8 @@ void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
         m_config->frontService()->asyncSendMessageByNodeID(
             ModuleID::TxsSync, peer, ref(*packetData), 0, nullptr);
         SYNC_LOG(DEBUG) << LOG_DESC("txsStatus: forwardTxsFromP2P")
-                        << LOG_KV("to", peer->shortHex()) << LOG_KV("txsSize", txsHash->size());
+                        << LOG_KV("to", peer->shortHex()) << LOG_KV("txsSize", txsHash->size())
+                        << LOG_KV("packetSize", packetData->size());
     }
 }
 
