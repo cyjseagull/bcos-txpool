@@ -569,11 +569,25 @@ void TransactionSync::maintainTransactions()
         return;
     }
     broadcastTxsFromRpc(txs);
-    m_forwardWorker->enqueue([this, txs]() {
-        // Added sleep to prevent excessive redundant transaction message packets caused by
-        // transaction status spreading too fast
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        forwardTxsFromP2P(txs);
+    auto self = std::weak_ptr<TransactionSync>(shared_from_this());
+    m_forwardWorker->enqueue([self, txs]() {
+        try
+        {
+            auto sync = self.lock();
+            if (!sync)
+            {
+                return;
+            }
+            // Added sleep to prevent excessive redundant transaction message packets caused by
+            // transaction status spreading too fast
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            sync->forwardTxsFromP2P(txs);
+        }
+        catch (std::exception const& e)
+        {
+            SYNC_LOG(WARNING) << LOG_DESC("forwardTxsFromP2P exception")
+                              << LOG_KV("info", boost::diagnostic_information(e));
+        }
     });
 }
 
@@ -586,6 +600,12 @@ void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
     std::map<NodeIDPtr, HashListPtr, KeyCompare> peerToForwardedTxs;
     for (auto tx : *_txs)
     {
+        // Note: in some cases the tx may be a empty shared_ptr with _vptr.Transaction to be 0x0
+        // add determination here to in case of coredump
+        if (!tx || tx.get() == nullptr)
+        {
+            continue;
+        }
         auto selectedPeers = selectPeers(tx, connectedNodeList, consensusNodeList, expectedPeers);
         for (auto peer : *selectedPeers)
         {
