@@ -28,7 +28,7 @@ include(FetchContent)
 set(BCOS_CMAKE_SCRIPTS_DIR ${CMAKE_CURRENT_BINARY_DIR}/bcos-cmake-scripts)
 FetchContent_Declare(bcos-cmake-scripts
     GIT_REPOSITORY https://${URL_BASE}/FISCO-BCOS/bcos-cmake-scripts.git
-    GIT_TAG dev
+    GIT_TAG 2d25e8957323ffa86a55528c22348088ba99e9c6
     SOURCE_DIR ${BCOS_CMAKE_SCRIPTS_DIR}
 )
 FetchContent_MakeAvailable(bcos-cmake-scripts)
@@ -39,8 +39,8 @@ list(APPEND CMAKE_MODULE_PATH ${BCOS_TXPOOL_CMAKE_DIR})
 #init hunter
 include(HunterGate)
 HunterGate(
-    URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/b55a347258b0fc3eda47f4ccd3e2c0db595b4957.tar.gz"
-    SHA1 "9331d1e70cee5498bd59ada13aa68278cbb9a2d6"
+    URL "https://${URL_BASE}/FISCO-BCOS/hunter/archive/1030fc0469cc8d974b3a3d020ab2fd59df006edb.tar.gz"
+    SHA1 "1bf2dc0631119c6304a9bac7445f1e77914c0fb7"
     FILEPATH "${BCOS_TXPOOL_CMAKE_DIR}/config.cmake"
 )
 project(bcos-txpool VERSION "3.0.0")
@@ -82,7 +82,7 @@ if (TESTS)
     # GIT_TAG dev
     # SOURCE_DIR ${BCOS_TEST_DIR})
     # FetchContent_MakeAvailable(bcos-test)
-    
+
     enable_testing()
     set(CTEST_OUTPUT_ON_FAILURE TRUE)
     add_subdirectory(test)

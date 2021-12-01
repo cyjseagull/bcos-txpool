@@ -16,4 +16,4 @@ include_directories(./sync)
 add_library(${BCOS_TXPOOL_TARGET} ${HEADERS} ${SRC_LIST})
 
 target_compile_options(${BCOS_TXPOOL_TARGET} PRIVATE -Wno-error -Wno-unused-variable)
-target_link_libraries(${BCOS_TXPOOL_TARGET} PUBLIC tbb::tbb bcos-framework::utilities bcos-framework::sync bcos-framework::tool)
+target_link_libraries(${BCOS_TXPOOL_TARGET} PUBLIC TBB::tbb bcos-framework::utilities bcos-framework::sync bcos-framework::tool)
