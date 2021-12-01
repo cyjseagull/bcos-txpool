@@ -568,35 +568,17 @@ void TransactionSync::maintainTransactions()
         m_newTransactions = false;
         return;
     }
-    broadcastTxsFromRpc(txs);
-    auto self = std::weak_ptr<TransactionSync>(shared_from_this());
-    m_forwardWorker->enqueue([self, txs]() {
-        try
-        {
-            auto sync = self.lock();
-            if (!sync)
-            {
-                return;
-            }
-            // Added sleep to prevent excessive redundant transaction message packets caused by
-            // transaction status spreading too fast
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            sync->forwardTxsFromP2P(txs);
-        }
-        catch (std::exception const& e)
-        {
-            SYNC_LOG(WARNING) << LOG_DESC("forwardTxsFromP2P exception")
-                              << LOG_KV("info", boost::diagnostic_information(e));
-        }
-    });
+    auto consensusNodeList = m_config->consensusNodeList();
+    auto connectedNodeList = m_config->connectedNodeList();
+    broadcastTxsFromRpc(connectedNodeList, consensusNodeList, txs);
+    forwardTxsFromP2P(connectedNodeList, consensusNodeList, txs);
 }
 
 // Randomly select a number of nodes to forward the transaction status
-void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
+void TransactionSync::forwardTxsFromP2P(bcos::crypto::NodeIDSet const& _connectedPeers,
+    bcos::consensus::ConsensusNodeList const& _consensusNodeList, ConstTransactionsPtr _txs)
 {
-    auto consensusNodeList = m_config->consensusNodeList();
-    auto connectedNodeList = m_config->connectedNodeList();
-    auto expectedPeers = (consensusNodeList.size() * m_config->forwardPercent() + 99) / 100;
+    auto expectedPeers = (_connectedPeers.size() * m_config->forwardPercent() + 99) / 100;
     std::map<NodeIDPtr, HashListPtr, KeyCompare> peerToForwardedTxs;
     for (auto tx : *_txs)
     {
@@ -606,7 +588,12 @@ void TransactionSync::forwardTxsFromP2P(ConstTransactionsPtr _txs)
         {
             continue;
         }
-        auto selectedPeers = selectPeers(tx, connectedNodeList, consensusNodeList, expectedPeers);
+        // TODO: Not forward txs status from the rpc directly
+        /*if (tx->submitCallback())
+        {
+            continue;
+        }*/
+        auto selectedPeers = selectPeers(tx, _connectedPeers, _consensusNodeList, expectedPeers);
         for (auto peer : *selectedPeers)
         {
             if (!peerToForwardedTxs.count(peer))
@@ -665,7 +652,8 @@ NodeIDListPtr TransactionSync::selectPeers(Transaction::ConstPtr _tx,
     return selectedPeers;
 }
 
-void TransactionSync::broadcastTxsFromRpc(ConstTransactionsPtr _txs)
+void TransactionSync::broadcastTxsFromRpc(NodeIDSet const& _connectedPeers,
+    ConsensusNodeList const& _consensusNodeList, ConstTransactionsPtr _txs)
 {
     auto block = m_config->blockFactory()->createBlock();
     // get the transactions from RPC
@@ -674,6 +662,14 @@ void TransactionSync::broadcastTxsFromRpc(ConstTransactionsPtr _txs)
         if (!tx->submitCallback())
         {
             continue;
+        }
+        for (auto const& node : _consensusNodeList)
+        {
+            if (!_connectedPeers.count(node->nodeID()))
+            {
+                continue;
+            }
+            tx->appendKnownNode(node->nodeID());
         }
         block->appendTransaction(std::const_pointer_cast<Transaction>(tx));
     }
@@ -687,8 +683,7 @@ void TransactionSync::broadcastTxsFromRpc(ConstTransactionsPtr _txs)
     auto txsPacket = m_config->msgFactory()->createTxsSyncMsg(
         TxsSyncPacketType::TxsPacket, std::move(*encodedData));
     auto packetData = txsPacket->encode();
-    auto consensusNodeList = m_config->consensusNodeList();
-    for (auto const& consensusNode : consensusNodeList)
+    for (auto const& consensusNode : _consensusNodeList)
     {
         if (consensusNode->nodeID()->data() == m_config->nodeID()->data())
         {

@@ -73,7 +73,10 @@ public:
         {
             return;
         }
-        forwardTxsFromP2P(txs);
+        auto connectedNodeList = m_config->connectedNodeList();
+        auto consensusNodeList = m_config->consensusNodeList();
+
+        forwardTxsFromP2P(connectedNodeList, consensusNodeList, txs);
     }
 };
 

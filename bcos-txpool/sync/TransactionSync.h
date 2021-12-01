@@ -67,8 +67,12 @@ public:
 protected:
     void executeWorker() override;
 
-    virtual void broadcastTxsFromRpc(bcos::protocol::ConstTransactionsPtr _txs);
-    virtual void forwardTxsFromP2P(bcos::protocol::ConstTransactionsPtr _txs);
+    virtual void broadcastTxsFromRpc(bcos::crypto::NodeIDSet const& _connectedPeers,
+        bcos::consensus::ConsensusNodeList const& _consensusNodeList,
+        bcos::protocol::ConstTransactionsPtr _txs);
+    virtual void forwardTxsFromP2P(bcos::crypto::NodeIDSet const& _connectedPeers,
+        bcos::consensus::ConsensusNodeList const& _consensusNodeList,
+        bcos::protocol::ConstTransactionsPtr _txs);
     virtual bcos::crypto::NodeIDListPtr selectPeers(bcos::protocol::Transaction::ConstPtr _tx,
         bcos::crypto::NodeIDSet const& _connectedPeers,
         bcos::consensus::ConsensusNodeList const& _consensusNodeList, size_t _expectedSize);
