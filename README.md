@@ -5,16 +5,15 @@ English / [中文](doc/README_CN.md)
 
 [![codecov](https://codecov.io/gh/FISCO-BCOS/bcos-txpool/branch/master/graph/badge.svg)](https://codecov.io/gh/FISCO-BCOS/bcos-txpool)
 [![CodeFactor](https://www.codefactor.io/repository/github/fisco-bcos/bcos-txpool/badge)](https://www.codefactor.io/repository/github/fisco-bcos/bcos-txpool)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/08552871ee104fe299b00bc79f8a12b9)](https://www.codacy.com/app/fisco-dev/FISCO-BCOS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FISCO-BCOS/bcos-txpool&amp;utm_campaign=Badge_Grade)
 [![GitHub All Releases](https://img.shields.io/github/downloads/FISCO-BCOS/bcos-txpool/total.svg)](https://github.com/FISCO-BCOS/bcos-txpool)
 [![Code Lines](https://tokei.rs/b1/github/FISCO-BCOS/bcos-txpool?category=code)](https://github.com/FISCO-BCOS/bcos-txpool)
 [![version](https://img.shields.io/github/tag/FISCO-BCOS/bcos-txpool.svg)](https://github.com/FISCO-BCOS/bcos-txpool/releases/latest)
 
-bcos-txpool is the transaction pool implementation of [FISCO BCOS 3.0](https://github.com/FISCO-BCOS/FISCO-BCOS), which mainly includes transaction verification, transaction synchronization, and transaction packaging functions. For details, please refer to [FISCO BCOS 3.0 Documentation](https://fisco-bcos-documentation-3x.readthedocs.io/zh/latest/index.html).
+bcos-txpool is the transaction pool implementation of [FISCO BCOS 3.x](https://github.com/FISCO-BCOS/FISCO-BCOS), which mainly includes transaction verification, transaction synchronization, and transaction packaging functions. For details, please refer to [FISCO BCOS 3.x Documentation](https://fisco-bcos-doc.readthedocs.io/).
 
 ## Documentation
 
-- [FISCO BCOS 3.0 Documentation](https://fisco-bcos-documentation-3x.readthedocs.io/zh/latest/index.html)
+- [FISCO BCOS 3.x Documentation](https://fisco-bcos-doc.readthedocs.io/)
 
 ## Code contribution
 

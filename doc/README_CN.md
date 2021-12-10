@@ -6,16 +6,15 @@
 
 [![codecov](https://codecov.io/gh/FISCO-BCOS/bcos-txpool/branch/master/graph/badge.svg)](https://codecov.io/gh/FISCO-BCOS/bcos-txpool)
 [![CodeFactor](https://www.codefactor.io/repository/github/fisco-bcos/bcos-txpool/badge)](https://www.codefactor.io/repository/github/fisco-bcos/bcos-txpool)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/08552871ee104fe299b00bc79f8a12b9)](https://www.codacy.com/app/fisco-dev/FISCO-BCOS?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FISCO-BCOS/bcos-txpool&amp;utm_campaign=Badge_Grade)
 [![GitHub All Releases](https://img.shields.io/github/downloads/FISCO-BCOS/bcos-txpool/total.svg)](https://github.com/FISCO-BCOS/bcos-txpool)
 [![Code Lines](https://tokei.rs/b1/github/FISCO-BCOS/bcos-txpool?category=code)](https://github.com/FISCO-BCOS/bcos-txpool)
 [![version](https://img.shields.io/github/tag/FISCO-BCOS/bcos-txpool.svg)](https://github.com/FISCO-BCOS/bcos-txpool/releases/latest)
 
-bcos-txpool是[FISCO BCOS 3.0](https://github.com/FISCO-BCOS/FISCO-BCOS)的交易池实现，主要包括交易验证、交易同步、交易打包功能，详细可参考[FISCO BCOS文档](https://fisco-bcos-documentation-3x.readthedocs.io/zh/latest/index.html).
+bcos-txpool是[FISCO BCOS 3.x](https://github.com/FISCO-BCOS/FISCO-BCOS)的交易池实现，主要包括交易验证、交易同步、交易打包功能，详细可参考[FISCO BCOS文档](https://fisco-bcos-doc.readthedocs.io/).
 
 ## 文档
 
-- [FISCO BCOS 3.0文档](https://fisco-bcos-documentation-3x.readthedocs.io/zh/latest/index.html)
+- [FISCO BCOS 3.x文档](https://fisco-bcos-doc.readthedocs.io/)
 
 ## 加入社区
 
